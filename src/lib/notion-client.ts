@@ -119,6 +119,9 @@ export async function queryCasesBySignals(
   if (!dbId) return false;
   try {
     const reportDate = new Date(signals.reportDate);
+    // Fallback if AI returned unparseable date
+    if (isNaN(reportDate.getTime())) return false;
+
     const fromDate = new Date(reportDate);
     fromDate.setDate(fromDate.getDate() - signals.thresholdDays);
 

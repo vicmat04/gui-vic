@@ -125,8 +125,7 @@ async function executeGroqCall(model: string, contentParts: ContentPart[]): Prom
     response_format: { type: "json_object" },
     messages: [
       { role: "system", content: SYSTEM_PROMPT },
-      // SAFETY: Groq SDK accepts ContentPart[] at runtime; the SDK types narrow to string
-      { role: "user", content: contentParts as unknown as string },
+      { role: "user", content: contentParts as unknown as string /* SAFETY: Groq API allows parts */ },
     ],
   });
 
