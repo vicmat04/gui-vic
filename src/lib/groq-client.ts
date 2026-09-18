@@ -15,7 +15,7 @@ function getGroq(): Groq {
   return _groq;
 }
 
-const MODEL = "qwen-vl-7b-instruct"; // best OCR/dense-doc performance
+const MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"; // vision model available on free tier
 
 const SYSTEM_PROMPT = `Eres un sistema de pre-autorización quirúrgica para una aseguradora.
 Recibirás dos imágenes: la PÓLIZA del paciente y el INFORME MÉDICO del hospital.
