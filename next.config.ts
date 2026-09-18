@@ -13,7 +13,10 @@ const nextConfig: NextConfig = {
             value: [
               "default-src 'self'",
               // Allow eval for pdfjs-dist worker + unpkg CDN for the worker script
-              "script-src 'self' 'unsafe-eval' https://unpkg.com",
+              // Next.js dev mode requires 'unsafe-inline' for React Refresh and HMR scripts
+              `script-src 'self' 'unsafe-eval' https://unpkg.com ${
+                process.env.NODE_ENV !== "production" ? "'unsafe-inline'" : ""
+              }`,
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob:",
               "font-src 'self'",
