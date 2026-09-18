@@ -58,14 +58,14 @@ export default function HistoryPanel() {
           value={cedula}
           onChange={(e) => setCedula(e.target.value)}
           placeholder="Cédula"
-          className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-blue-400"
+          className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:border-blue-400"
         />
         <input
           type="text"
           value={policyNumber}
           onChange={(e) => setPolicyNumber(e.target.value)}
           placeholder="Número de póliza"
-          className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-blue-400"
+          className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:border-blue-400"
         />
         {error && <p className="text-red-500 text-xs">{error}</p>}
         <button
