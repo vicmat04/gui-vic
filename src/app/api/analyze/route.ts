@@ -79,11 +79,9 @@ export async function POST(req: NextRequest): Promise<NextResponse<SubmitRespons
     console.error("[analyze] Groq analyzeDocuments failed:", errorMsg);
     console.error("[analyze] Full error:", err);
 
-    const userMessage = errorMsg.includes("RATE_LIMIT") || errorMsg.includes("rate_limit")
+    const userMessage = errorMsg.includes("rate_limit") || errorMsg.includes("RATE_LIMIT")
       ? "El sistema de IA está ocupado. Intentá en unos segundos."
-      : errorMsg.includes("INVALID_REQUEST") || errorMsg.includes("invalid_request")
-      ? "Verificá que los documentos subidos sean legibles (PDF o imagen)."
-      : `Hubo un problema con el servicio de IA: ${errorMsg.slice(0, 200)}`;
+      : `Error del servicio de IA: ${errorMsg.slice(0, 300)}`;
 
     // Best-effort audit trail — do not let a Notion failure mask the real error
     try {
