@@ -1,36 +1,119 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Agente de Pre-Autorización Quirúrgica
 
-## Getting Started
+> hackIAthon 2025 · Viamatica / ADEN · Panamá — Reto 1
 
-First, run the development server:
+Sistema inteligente que automatiza la decisión de pre-autorización de cirugías en segundos, eliminando la espera de horas o días que sufre el paciente hoy.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Demo
+
+🔗 **[URL pública en Vercel — pendiente de deploy]**
+
+## Cómo funciona
+
+1. El usuario ingresa su cédula y sube dos documentos: **póliza** + **informe médico** (PDF o imagen).
+2. El backend valida los archivos **antes** de llamar a la IA.
+3. La IA (Groq + Qwen VL) extrae los campos clave, cruza cobertura, exclusiones y período de carencia, y devuelve un veredicto estructurado en JSON.
+4. El backend **recalcula el veredicto con reglas propias** y marca el caso como "para revisión" si difiere de la IA.
+5. Se detectan duplicados (por folio o señales combinadas) antes de guardar.
+6. El resultado se almacena en Notion junto con los documentos originales.
+7. El paciente puede consultar su historial ingresando cédula + número de póliza.
+
+**Veredictos posibles:** `preaprobado` | `documentos_faltantes` | `rechazado`
+
+## Stack técnico
+
+| Componente | Tecnología |
+|---|---|
+| Frontend + Backend | Next.js 15 (App Router + API Routes) |
+| IA / OCR | Groq API · Qwen VL |
+| Base de datos | Notion API |
+| Hosting | Vercel |
+| Estilos | Tailwind CSS |
+
+## Estructura del proyecto
+
+```
+src/
+├── app/
+│   ├── page.tsx               # Formulario principal + estados
+│   └── api/
+│       ├── analyze/route.ts   # POST — flujo completo de análisis
+│       └── history/route.ts   # GET  — historial por cédula + póliza
+├── components/
+│   ├── ResultCard.tsx         # Pantalla de resultado
+│   └── HistoryPanel.tsx       # Consulta de historial
+├── lib/
+│   ├── groq-client.ts         # Integración Groq + manejo de errores
+│   ├── notion-client.ts       # Guardar / consultar casos en Notion
+│   ├── validation.ts          # Validación de archivos y cédula
+│   ├── cross-verify.ts        # Verificación cruzada del veredicto
+│   ├── duplicate-detection.ts # Detección de duplicados
+│   └── rate-limiter.ts        # Rate limiting por IP
+└── types/index.ts             # Tipos del dominio
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Configuración local
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+# 1. Clonar el repo
+git clone <url-del-repo>
+cd agente-preautorizador/app
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+# 2. Instalar dependencias
+npm install
 
-## Learn More
+# 3. Configurar variables de entorno
+cp .env.example .env.local
+# Editar .env.local con tus claves reales
 
-To learn more about Next.js, take a look at the following resources:
+# 4. Correr en desarrollo
+npm run dev
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Variables de entorno
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Ver `.env.example`. Las claves reales van **solo** en variables de entorno de Vercel (producción) o `.env.local` (desarrollo local). **Nunca en el repositorio.**
 
-## Deploy on Vercel
+```
+GROQ_API_KEY=
+NOTION_API_KEY=
+NOTION_DATABASE_ID=
+RATE_LIMIT_MAX=10
+RATE_LIMIT_WINDOW_MS=900000
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Configuración de Notion
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+La base de datos en Notion debe tener estas propiedades:
+
+| Propiedad | Tipo |
+|---|---|
+| Título | Title |
+| Cédula | Text |
+| Número de Póliza | Text |
+| Veredicto | Select (`preaprobado`, `documentos_faltantes`, `rechazado`) |
+| Razón | Text |
+| Procedimiento | Text |
+| Médico/Centro | Text |
+| Folio | Text |
+| Fecha | Date |
+| Sospechoso | Checkbox |
+| Error | Checkbox |
+
+## Seguridad
+
+- Rate limiting por IP en el backend propio (no solo en Groq).
+- Validación estricta de archivos **antes** de llamar a la IA.
+- Sanitización de todo input del usuario antes de enviarlo a Notion.
+- Validación de estructura y valores de la respuesta de la IA.
+- Verificación cruzada del veredicto con reglas propias del backend.
+- Mitigación de prompt injection: temperatura baja, formato JSON fijo, citar evidencia literal, validación de salida.
+- Variables de entorno separadas del código.
+
+## Herramientas de IA utilizadas
+
+Ver `AI-TOOLS.md` para el detalle completo exigido por las bases del hackathon.
+
+## Equipo
+
+hackIAthon 2025 — Viamatica / ADEN · Panamá
