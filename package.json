@@ -13,6 +13,7 @@
     "groq-sdk": "^1.6.0",
     "multer": "^2.4.0",
     "next": "16.3.5",
+    "pdf-parse": "^2.4.5",
     "pdf2pic": "^3.2.0",
     "pdfjs-dist": "^6.3.289",
     "react": "19.2.8",
@@ -22,6 +23,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/pdf-parse": "^1.1.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",

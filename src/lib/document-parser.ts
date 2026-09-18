@@ -3,7 +3,7 @@
 // Extracts clean text from digital PDFs or encodes images to base64
 // ──────────────────────────────────────────────────────────────────
 
-import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
+import pdfParse from "pdf-parse";
 
 export interface ParsedDocument {
   filename: string;
@@ -29,29 +29,15 @@ export async function parseUploadedDocument(file: File): Promise<ParsedDocument>
 
   if (isPdf) {
     try {
-      const data = new Uint8Array(arrayBuffer);
-      const loadingTask = getDocument({
-        data,
-        useSystemFonts: true,
-        disableFontFace: true,
-      });
-      const doc = await loadingTask.promise;
-
-      let fullText = "";
-      for (let i = 1; i <= doc.numPages; i++) {
-        const page = await doc.getPage(i);
-        const content = await page.getTextContent();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const pageText = content.items.map((item: any) => item.str).join(" ");
-        fullText += `--- PÁGINA ${i} ---\n${pageText}\n`;
-      }
+      const buffer = Buffer.from(arrayBuffer);
+      const data = await pdfParse(buffer);
 
       // If text was found in the PDF, return text content directly
-      if (fullText.trim().length > 30) {
+      if (data.text && data.text.trim().length > 30) {
         return {
           filename: name,
           isText: true,
-          textContent: fullText.trim(),
+          textContent: data.text.trim(),
         };
       }
     } catch (pdfErr) {

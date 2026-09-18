@@ -17,8 +17,8 @@ function getGroq(): Groq {
   return _groq;
 }
 
-const VISION_PRIMARY = "qwen/qwen3.6-27b";
-const VISION_FALLBACK = "qwen/qwen3.8-27b";
+const VISION_PRIMARY = "llama-3.2-90b-vision-preview";
+const VISION_FALLBACK = "llama-3.2-11b-vision-preview";
 const TEXT_MODEL = "llama-3.3-70b-versatile";
 
 const SYSTEM_PROMPT = `Eres un sistema de pre-autorización quirúrgica para una aseguradora.
