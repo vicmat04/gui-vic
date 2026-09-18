@@ -17,9 +17,11 @@ function getGroq(): Groq {
   return _groq;
 }
 
-const VISION_PRIMARY = "llama-3.2-90b-vision-preview";
-const VISION_FALLBACK = "llama-3.2-11b-vision-preview";
-const TEXT_MODEL = "llama-3.3-70b-versatile";
+// Models updated 2026-09 — see https://console.groq.com/docs/models
+const VISION_PRIMARY = "meta-llama/llama-4-scout-17b-16e-instruct";
+const VISION_FALLBACK = "meta-llama/llama-4-maverick-17b-128e-instruct";
+const TEXT_MODEL = "meta-llama/llama-4-maverick-17b-128e-instruct";
+const TEXT_FALLBACK = "qwen/qwen3-32b";
 
 const SYSTEM_PROMPT = `Eres un sistema de pre-autorización quirúrgica para una aseguradora.
 Recibirás dos documentos: la PÓLIZA del paciente y el INFORME MÉDICO del hospital (en texto o imagen).
@@ -123,6 +125,7 @@ async function executeGroqCall(model: string, contentParts: ContentPart[]): Prom
     response_format: { type: "json_object" },
     messages: [
       { role: "system", content: SYSTEM_PROMPT },
+      // SAFETY: Groq SDK accepts ContentPart[] at runtime; the SDK types narrow to string
       { role: "user", content: contentParts as unknown as string },
     ],
   });
@@ -131,7 +134,11 @@ async function executeGroqCall(model: string, contentParts: ContentPart[]): Prom
   console.log(`[groq] [${model}] Raw response sample:`, raw.slice(0, 180));
 
   const jsonText = raw.replace(/```json?\n?/gi, "").replace(/```/g, "").trim();
-  return JSON.parse(jsonText) as AIVerdict;
+  try {
+    return JSON.parse(jsonText) as AIVerdict;
+  } catch {
+    throw new Error(`[groq] Invalid JSON from model ${model}: ${jsonText.slice(0, 200)}`);
+  }
 }
 
 export async function analyzeDocuments(
@@ -143,7 +150,7 @@ export async function analyzeDocuments(
 
   const modelsToTry = hasImages
     ? [VISION_PRIMARY, VISION_FALLBACK]
-    : [TEXT_MODEL, VISION_PRIMARY];
+    : [TEXT_MODEL, TEXT_FALLBACK];
 
   let lastError: unknown;
 
