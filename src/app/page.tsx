@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, forwardRef } from "react";
 import { validateFile, validateCedula } from "@/lib/validation";
 import ResultCard from "@/components/ResultCard";
 import HistoryPanel from "@/components/HistoryPanel";
@@ -12,23 +12,29 @@ import { SubmitResponse } from "@/types";
  * Runs 100% in the browser — no server-side PDF dependency needed.
  */
 async function normalizeToImage(file: File): Promise<File> {
-  if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
-    return file;
-  }
+  const isPdf =
+    file.type === "application/pdf" ||
+    file.type.includes("pdf") ||
+    file.name.toLowerCase().endsWith(".pdf");
+
+  if (!isPdf) return file;
 
   try {
     const pdfjs = await import("pdfjs-dist");
     pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
     const arrayBuffer = await file.arrayBuffer();
-    const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+    const loadingTask = pdfjs.getDocument({ data: arrayBuffer });
+    const pdf = await loadingTask.promise;
     const page = await pdf.getPage(1);
 
     const viewport = page.getViewport({ scale: 1.5 });
     const canvas = document.createElement("canvas");
     canvas.width = viewport.width;
     canvas.height = viewport.height;
-    const ctx = canvas.getContext("2d")!;
+    const ctx = canvas.getContext("2d");
+
+    if (!ctx) return file;
 
     await page.render({
       canvasContext: ctx as unknown as CanvasRenderingContext2D,
@@ -40,13 +46,13 @@ async function normalizeToImage(file: File): Promise<File> {
       canvas.toBlob((b) => resolve(b), "image/jpeg", 0.88)
     );
 
-    if (!blob) throw new Error("No se pudo convertir la página del PDF a imagen.");
+    if (!blob) return file;
 
     return new File([blob], file.name.replace(/\.pdf$/i, ".jpg"), {
       type: "image/jpeg",
     });
   } catch (pdfErr) {
-    console.warn("Client-side PDF conversion failed, sending file as-is:", pdfErr);
+    console.warn("[normalizeToImage] Rasterization notice:", pdfErr);
     return file;
   }
 }
@@ -72,14 +78,14 @@ export default function HomePage() {
     if (!cedulaCheck.valid) newErrors.cedula = cedulaCheck.error!;
 
     if (!policyFile) {
-      newErrors.policy = "Adjuntá la póliza del paciente.";
+      newErrors.policy = "Adjuntá la póliza del paciente (PDF o imagen).";
     } else {
       const pCheck = validateFile(policyFile, "póliza");
       if (!pCheck.valid) newErrors.policy = pCheck.error!;
     }
 
     if (!reportFile) {
-      newErrors.report = "Adjuntá el informe médico.";
+      newErrors.report = "Adjuntá el informe médico (PDF o imagen).";
     } else {
       const rCheck = validateFile(reportFile, "informe médico");
       if (!rCheck.valid) newErrors.report = rCheck.error!;
@@ -138,11 +144,11 @@ export default function HomePage() {
       <div className="w-full max-w-xl">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-2xl mb-4 shadow-lg">
-            <span className="text-3xl">🏥</span>
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-2xl mb-4 shadow-lg text-white text-3xl">
+            🏥
           </div>
           <h1 className="text-3xl font-bold text-gray-900">Pre-Autorización Quirúrgica</h1>
-          <p className="text-gray-500 mt-2">Sistema inteligente de análisis de cobertura</p>
+          <p className="text-gray-500 mt-2">Sistema inteligente de análisis de cobertura en tiempo real</p>
         </div>
 
         {/* Form */}
@@ -157,7 +163,16 @@ export default function HomePage() {
                 <input
                   type="text"
                   value={cedula}
-                  onChange={(e) => setCedula(e.target.value)}
+                  onChange={(e) => {
+                    setCedula(e.target.value);
+                    if (errors.cedula) {
+                      setErrors((prev) => {
+                        const copy = { ...prev };
+                        delete copy.cedula;
+                        return copy;
+                      });
+                    }
+                  }}
                   placeholder="Ej: 8-888-8888"
                   autoFocus
                   className={`w-full px-5 py-4 rounded-xl border-2 transition-all outline-none
@@ -184,10 +199,19 @@ export default function HomePage() {
               <FileInput
                 id="policy"
                 label="Póliza del Paciente"
-                icon="📋"
-                accept=".pdf,image/jpeg,image/png,image/webp"
+                icon="📄"
+                accept=".pdf,application/pdf,image/*,.jpg,.jpeg,.png,.webp"
                 file={policyFile}
-                onChange={setPolicyFile}
+                onChange={(f) => {
+                  setPolicyFile(f);
+                  if (errors.policy) {
+                    setErrors((prev) => {
+                      const next = { ...prev };
+                      delete next.policy;
+                      return next;
+                    });
+                  }
+                }}
                 error={errors.policy}
                 ref={policyRef}
               />
@@ -197,9 +221,18 @@ export default function HomePage() {
                 id="report"
                 label="Informe Médico"
                 icon="🩺"
-                accept=".pdf,image/jpeg,image/png,image/webp"
+                accept=".pdf,application/pdf,image/*,.jpg,.jpeg,.png,.webp"
                 file={reportFile}
-                onChange={setReportFile}
+                onChange={(f) => {
+                  setReportFile(f);
+                  if (errors.report) {
+                    setErrors((prev) => {
+                      const next = { ...prev };
+                      delete next.report;
+                      return next;
+                    });
+                  }
+                }}
                 error={errors.report}
                 ref={reportRef}
               />
@@ -250,8 +283,6 @@ export default function HomePage() {
 }
 
 // ── FileInput component ───────────────────────────────────────────
-import { forwardRef } from "react";
-
 interface FileInputProps {
   id: string;
   label: string;
@@ -265,12 +296,12 @@ interface FileInputProps {
 const FileInput = forwardRef<HTMLInputElement, FileInputProps>(
   ({ id, label, icon, accept, file, onChange, error }, ref) => (
     <div>
-      <label className="block text-sm font-semibold text-gray-700 mb-2">
+      <span className="block text-sm font-semibold text-gray-700 mb-2">
         {icon} {label}
-      </label>
+      </span>
       <label
         htmlFor={id}
-        className={`flex items-center gap-3 w-full px-4 py-3 rounded-xl border-2 cursor-pointer transition-colors ${
+        className={`flex items-center gap-3 w-full px-4 py-3.5 rounded-xl border-2 cursor-pointer transition-colors ${
           error
             ? "border-red-400 bg-red-50"
             : file
@@ -279,18 +310,30 @@ const FileInput = forwardRef<HTMLInputElement, FileInputProps>(
         }`}
       >
         <span className="text-2xl">{file ? "✅" : "📁"}</span>
-        <span className={`text-sm truncate ${file ? "text-green-700 font-medium" : "text-gray-400"}`}>
-          {file ? file.name : "PDF o imagen (máx. 10 MB)"}
+        <span
+          className={`text-sm truncate flex-1 ${
+            file ? "text-green-800 font-semibold" : "text-gray-500"
+          }`}
+        >
+          {file ? file.name : "Seleccionar PDF o imagen (máx. 10 MB)"}
         </span>
-        <input
-          id={id}
-          type="file"
-          accept={accept}
-          className="sr-only"
-          ref={ref}
-          onChange={(e) => onChange(e.target.files?.[0] ?? null)}
-        />
+        {file && (
+          <span className="text-xs bg-green-200 text-green-800 px-2 py-1 rounded-md font-semibold">
+            {(file.size / 1024).toFixed(0)} KB
+          </span>
+        )}
       </label>
+      <input
+        id={id}
+        type="file"
+        accept={accept}
+        className="hidden"
+        ref={ref}
+        onChange={(e) => {
+          const selected = e.target.files?.[0] ?? null;
+          onChange(selected);
+        }}
+      />
       {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
     </div>
   )

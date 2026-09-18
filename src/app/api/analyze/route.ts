@@ -187,10 +187,24 @@ export async function POST(req: NextRequest): Promise<NextResponse<SubmitRespons
 // ── Helpers ───────────────────────────────────────────────────────
 function validateUploadedFile(file: File | null, label: string): string | null {
   if (!file || file.size === 0) return `El archivo de ${label} está vacío.`;
-  if (file.size < 100) return `El archivo de ${label} parece corrupto.`;
+  if (file.size < 50) return `El archivo de ${label} parece corrupto.`;
   if (file.size > MAX_FILE_SIZE) return `El archivo de ${label} supera el límite de 10 MB.`;
-  if (!ALLOWED_TYPES.includes(file.type))
+
+  const name = (file.name || "").toLowerCase();
+  const type = (file.type || "").toLowerCase();
+
+  const isPdf =
+    type === "application/pdf" ||
+    type.includes("pdf") ||
+    name.endsWith(".pdf");
+
+  const isImage =
+    type.startsWith("image/") ||
+    /\.(jpe?g|png|webp|bmp|tiff?)$/i.test(name);
+
+  if (!isPdf && !isImage) {
     return `El archivo de ${label} debe ser PDF o imagen (JPEG, PNG, WEBP).`;
+  }
   return null;
 }
 

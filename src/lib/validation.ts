@@ -4,15 +4,8 @@
 
 import { ValidationResult } from "@/types";
 
-const ALLOWED_MIME_TYPES = [
-  "application/pdf",
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-];
-
 const MAX_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
-const MIN_SIZE_BYTES = 100; // sanity floor — 100 bytes
+const MIN_SIZE_BYTES = 50; // sanity floor
 
 export function validateFile(
   file: File,
@@ -36,7 +29,19 @@ export function validateFile(
     };
   }
 
-  if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+  const name = (file.name || "").toLowerCase();
+  const type = (file.type || "").toLowerCase();
+
+  const isPdf =
+    type === "application/pdf" ||
+    type.includes("pdf") ||
+    name.endsWith(".pdf");
+
+  const isImage =
+    type.startsWith("image/") ||
+    /\.(jpe?g|png|webp|bmp|tiff?)$/i.test(name);
+
+  if (!isPdf && !isImage) {
     return {
       valid: false,
       error: `El archivo de ${label} debe ser PDF o imagen (JPEG, PNG, WEBP).`,
