@@ -12,11 +12,9 @@ const nextConfig: NextConfig = {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              // Allow eval for pdfjs-dist worker + unpkg CDN for the worker script
-              // Next.js dev mode requires 'unsafe-inline' for React Refresh and HMR scripts
-              `script-src 'self' 'unsafe-eval' https://unpkg.com ${
-                process.env.NODE_ENV !== "production" ? "'unsafe-inline'" : ""
-              }`,
+              // Next.js (App Router) requiere 'unsafe-inline' en producción para sus scripts de hidratación,
+              // a menos que se implemente un Middleware con nonces criptográficos estrictos.
+              "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://unpkg.com",
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob:",
               "font-src 'self'",
