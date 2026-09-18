@@ -96,19 +96,29 @@ export default function HomePage() {
               {/* Cédula */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Número de Cédula
+                  🪪 Número de Cédula
                 </label>
                 <input
                   type="text"
                   value={cedula}
                   onChange={(e) => setCedula(e.target.value)}
                   placeholder="Ej: 8-888-8888"
-                  className={`w-full px-4 py-3 rounded-xl border-2 transition-colors outline-none focus:ring-2 focus:ring-blue-200 ${
-                    errors.cedula
-                      ? "border-red-400 bg-red-50"
-                      : "border-gray-200 focus:border-blue-500"
-                  }`}
+                  autoFocus
+                  className={`w-full px-5 py-4 rounded-xl border-2 transition-all outline-none
+                    text-gray-900 text-lg font-semibold tracking-widest
+                    placeholder:text-gray-300 placeholder:font-normal placeholder:tracking-normal
+                    focus:ring-4 focus:ring-blue-100
+                    ${
+                      errors.cedula
+                        ? "border-red-400 bg-red-50"
+                        : cedula
+                        ? "border-blue-500 bg-blue-50 shadow-inner"
+                        : "border-gray-300 hover:border-blue-300 focus:border-blue-500"
+                    }`}
                 />
+                {cedula && !errors.cedula && (
+                  <p className="text-blue-500 text-xs mt-1 font-medium">✓ Cédula ingresada</p>
+                )}
                 {errors.cedula && (
                   <p className="text-red-500 text-sm mt-1">{errors.cedula}</p>
                 )}
