@@ -4,8 +4,10 @@
 // Uses pdf-parse@1.1.1 — no native deps, works in Vercel serverless
 // ──────────────────────────────────────────────────────────────────
 
+// pdf-parse@1.1.1 default entry tries to load a test fixture on require().
+// Import directly from lib/ to skip that side-effect.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const pdfParse = require("pdf-parse");
+const pdfParse = require("pdf-parse/lib/pdf-parse.js");
 
 export interface ParsedDocument {
   filename: string;
