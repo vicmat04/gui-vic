@@ -5,7 +5,7 @@
 import { ValidationResult } from "@/types";
 
 const MAX_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
-const MIN_SIZE_BYTES = 50; // sanity floor
+const MIN_SIZE_BYTES = 5; // sanity floor
 
 export function validateFile(
   file: File,

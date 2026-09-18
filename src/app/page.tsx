@@ -142,7 +142,7 @@ export default function HomePage() {
                 id="policy"
                 label="Póliza del Paciente"
                 icon="📄"
-                accept=".pdf,application/pdf,image/*,.jpg,.jpeg,.png,.webp"
+                accept=".pdf,.PDF,application/pdf,image/*,.jpg,.jpeg,.png,.webp"
                 file={policyFile}
                 onChange={(f) => {
                   setPolicyFile(f);
@@ -163,7 +163,7 @@ export default function HomePage() {
                 id="report"
                 label="Informe Médico"
                 icon="🩺"
-                accept=".pdf,application/pdf,image/*,.jpg,.jpeg,.png,.webp"
+                accept=".pdf,.PDF,application/pdf,image/*,.jpg,.jpeg,.png,.webp"
                 file={reportFile}
                 onChange={(f) => {
                   setReportFile(f);
@@ -241,42 +241,44 @@ const FileInput = forwardRef<HTMLInputElement, FileInputProps>(
       <span className="block text-sm font-semibold text-gray-700 mb-2">
         {icon} {label}
       </span>
-      <label
-        htmlFor={id}
-        className={`flex items-center gap-3 w-full px-4 py-3.5 rounded-xl border-2 cursor-pointer transition-colors ${
-          error
-            ? "border-red-400 bg-red-50"
-            : file
-            ? "border-green-400 bg-green-50"
-            : "border-dashed border-gray-300 hover:border-blue-400 hover:bg-blue-50"
-        }`}
-      >
-        <span className="text-2xl">{file ? "✅" : "📁"}</span>
-        <span
-          className={`text-sm truncate flex-1 ${
-            file ? "text-green-800 font-semibold" : "text-gray-500"
+      <div className="relative group">
+        <div
+          className={`flex items-center gap-3 w-full px-4 py-3.5 rounded-xl border-2 transition-all ${
+            error
+              ? "border-red-400 bg-red-50"
+              : file
+              ? "border-green-500 bg-green-50 shadow-sm"
+              : "border-dashed border-gray-300 group-hover:border-blue-500 group-hover:bg-blue-50/50"
           }`}
         >
-          {file ? file.name : "Seleccionar PDF o imagen (máx. 10 MB)"}
-        </span>
-        {file && (
-          <span className="text-xs bg-green-200 text-green-800 px-2.5 py-1 rounded-md font-semibold">
-            {(file.size / 1024).toFixed(0)} KB
+          <span className="text-2xl select-none">{file ? "✅" : "📁"}</span>
+          <span
+            className={`text-sm truncate flex-1 select-none ${
+              file ? "text-green-800 font-semibold" : "text-gray-500"
+            }`}
+          >
+            {file ? file.name : "Hacé clic o arrastrá tu PDF o imagen acá"}
           </span>
-        )}
-      </label>
-      <input
-        id={id}
-        type="file"
-        accept={accept}
-        className="hidden"
-        ref={ref}
-        onChange={(e) => {
-          const selected = e.target.files?.[0] ?? null;
-          onChange(selected);
-        }}
-      />
-      {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
+          {file && (
+            <span className="text-xs bg-green-200 text-green-800 px-2.5 py-1 rounded-md font-semibold select-none">
+              {(file.size / 1024).toFixed(0)} KB
+            </span>
+          )}
+        </div>
+        <input
+          id={id}
+          type="file"
+          accept={accept}
+          ref={ref}
+          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+          onChange={(e) => {
+            const selected = e.target.files?.[0] ?? null;
+            console.log(`[FileInput ${id}] File chosen:`, selected?.name, selected?.size);
+            onChange(selected);
+          }}
+        />
+      </div>
+      {error && <p className="text-red-500 text-sm mt-1 font-medium">{error}</p>}
     </div>
   )
 );
