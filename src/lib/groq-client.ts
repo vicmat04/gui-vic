@@ -1,9 +1,11 @@
 // ──────────────────────────────────────────────────────────────────
 // Groq client — document extraction + verdict (single call)
+// Handles text documents (from digital PDFs) and images (from scans)
 // ──────────────────────────────────────────────────────────────────
 
 import Groq from "groq-sdk";
 import { AIVerdict } from "@/types";
+import { ParsedDocument } from "./document-parser";
 
 // Lazy initialization — avoids build-time crash when env var is absent
 let _groq: Groq | null = null;
@@ -15,14 +17,15 @@ function getGroq(): Groq {
   return _groq;
 }
 
-const PRIMARY_MODEL = "qwen/qwen3.6-27b";
-const FALLBACK_MODEL = "qwen/qwen3.8-27b";
+const VISION_PRIMARY = "qwen/qwen3.6-27b";
+const VISION_FALLBACK = "qwen/qwen3.8-27b";
+const TEXT_MODEL = "llama-3.3-70b-versatile";
 
 const SYSTEM_PROMPT = `Eres un sistema de pre-autorización quirúrgica para una aseguradora.
-Recibirás dos imágenes: la PÓLIZA del paciente y el INFORME MÉDICO del hospital.
+Recibirás dos documentos: la PÓLIZA del paciente y el INFORME MÉDICO del hospital (en texto o imagen).
 
 REGLAS ESTRICTAS:
-1. Usa SOLO información literal visible en las imágenes. Nunca inventes ni asumas datos.
+1. Usa SOLO información literal visible en los documentos. Nunca inventes ni asumas datos.
 2. Si un campo no es legible o no aparece, devuelve null para ese campo.
 3. Para cada dato clave, cita textualmente la parte del documento donde lo encontraste.
 4. El campo "status" SOLO puede ser uno de: "preaprobado", "documentos_faltantes", "rechazado".
@@ -30,7 +33,7 @@ REGLAS ESTRICTAS:
 6. "rechazado" aplica cuando el procedimiento no está cubierto o no cumple el período de carencia.
 7. Devuelve ÚNICAMENTE un objeto JSON válido, sin texto adicional, sin markdown.`;
 
-const USER_PROMPT = `Analiza los documentos adjuntos y devuelve EXACTAMENTE este JSON:
+const USER_PROMPT = `Analiza ambos documentos y devuelve EXACTAMENTE este JSON:
 {
   "status": "preaprobado" | "documentos_faltantes" | "rechazado",
   "reason": "explicación breve de la decisión",
@@ -56,16 +59,63 @@ const USER_PROMPT = `Analiza los documentos adjuntos y devuelve EXACTAMENTE este
   }
 }`;
 
-async function callGroqWithModel(
-  model: string,
-  policyBase64: string,
-  reportBase64: string,
-  policyMime: string,
-  reportMime: string
-): Promise<AIVerdict> {
-  const safePolicyMime = policyMime.startsWith("image/") ? policyMime : "image/jpeg";
-  const safeReportMime = reportMime.startsWith("image/") ? reportMime : "image/jpeg";
+type ContentPart =
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string } };
 
+function buildUserContent(
+  policyDoc: ParsedDocument,
+  reportDoc: ParsedDocument
+): ContentPart[] {
+  const parts: ContentPart[] = [];
+
+  // Póliza
+  if (policyDoc.isText && policyDoc.textContent) {
+    parts.push({
+      type: "text",
+      text: `### DOCUMENTO 1: PÓLIZA DEL PACIENTE (${policyDoc.filename})\n${policyDoc.textContent}\n`,
+    });
+  } else {
+    parts.push({
+      type: "text",
+      text: `### DOCUMENTO 1: PÓLIZA DEL PACIENTE (${policyDoc.filename}) [IMAGEN]:`,
+    });
+    parts.push({
+      type: "image_url",
+      image_url: {
+        url: `data:${policyDoc.mimeType || "image/jpeg"};base64,${policyDoc.base64}`,
+      },
+    });
+  }
+
+  // Informe Médico
+  if (reportDoc.isText && reportDoc.textContent) {
+    parts.push({
+      type: "text",
+      text: `### DOCUMENTO 2: INFORME MÉDICO (${reportDoc.filename})\n${reportDoc.textContent}\n`,
+    });
+  } else {
+    parts.push({
+      type: "text",
+      text: `### DOCUMENTO 2: INFORME MÉDICO (${reportDoc.filename}) [IMAGEN]:`,
+    });
+    parts.push({
+      type: "image_url",
+      image_url: {
+        url: `data:${reportDoc.mimeType || "image/jpeg"};base64,${reportDoc.base64}`,
+      },
+    });
+  }
+
+  parts.push({
+    type: "text",
+    text: USER_PROMPT,
+  });
+
+  return parts;
+}
+
+async function executeGroqCall(model: string, contentParts: ContentPart[]): Promise<AIVerdict> {
   const response = await getGroq().chat.completions.create({
     model,
     temperature: 0.1,
@@ -73,118 +123,39 @@ async function callGroqWithModel(
     response_format: { type: "json_object" },
     messages: [
       { role: "system", content: SYSTEM_PROMPT },
-      {
-        role: "user",
-        content: [
-          { type: "text", text: "PÓLIZA:" },
-          {
-            type: "image_url",
-            image_url: { url: `data:${safePolicyMime};base64,${policyBase64}` },
-          },
-          { type: "text", text: "INFORME MÉDICO:" },
-          {
-            type: "image_url",
-            image_url: { url: `data:${safeReportMime};base64,${reportBase64}` },
-          },
-          { type: "text", text: USER_PROMPT },
-        ],
-      },
+      { role: "user", content: contentParts as unknown as string },
     ],
   });
 
   const raw = response.choices[0]?.message?.content ?? "";
-  console.log(`[groq] [${model}] raw response:`, raw.slice(0, 200));
+  console.log(`[groq] [${model}] Raw response sample:`, raw.slice(0, 180));
 
-  // Strip possible markdown code fences
   const jsonText = raw.replace(/```json?\n?/gi, "").replace(/```/g, "").trim();
   return JSON.parse(jsonText) as AIVerdict;
 }
 
-async function callGroq(
-  policyBase64: string,
-  reportBase64: string,
-  policyMime: string,
-  reportMime: string
-): Promise<AIVerdict> {
-  try {
-    return await callGroqWithModel(
-      PRIMARY_MODEL,
-      policyBase64,
-      reportBase64,
-      policyMime,
-      reportMime
-    );
-  } catch (primaryErr: unknown) {
-    console.warn(`[groq] Primary model (${PRIMARY_MODEL}) failed, trying fallback:`, primaryErr);
-    return await callGroqWithModel(
-      FALLBACK_MODEL,
-      policyBase64,
-      reportBase64,
-      policyMime,
-      reportMime
-    );
-  }
-}
-
-const RETRY_LIMIT = 2;
-
 export async function analyzeDocuments(
-  policyBase64: string,
-  reportBase64: string,
-  policyMime: string,
-  reportMime: string
+  policyDoc: ParsedDocument,
+  reportDoc: ParsedDocument
 ): Promise<AIVerdict> {
+  const contentParts = buildUserContent(policyDoc, reportDoc);
+  const hasImages = !policyDoc.isText || !reportDoc.isText;
+
+  const modelsToTry = hasImages
+    ? [VISION_PRIMARY, VISION_FALLBACK]
+    : [TEXT_MODEL, VISION_PRIMARY];
+
   let lastError: unknown;
 
-  for (let attempt = 1; attempt <= RETRY_LIMIT; attempt++) {
+  for (const model of modelsToTry) {
     try {
-      return await callGroq(policyBase64, reportBase64, policyMime, reportMime);
-    } catch (err: unknown) {
+      console.log(`[groq] Trying model: ${model} (hasImages: ${hasImages})`);
+      return await executeGroqCall(model, contentParts);
+    } catch (err) {
       lastError = err;
-      console.error(`[groq] Attempt ${attempt}/${RETRY_LIMIT} error:`, err);
-
-      const status = (err as { status?: number })?.status;
-
-      if (status === 429) {
-        // Honor Retry-After if present; default 5 s
-        const retryAfter =
-          (err as { headers?: Record<string, string> })?.headers?.[
-            "retry-after"
-          ];
-        const waitMs = retryAfter ? parseInt(retryAfter) * 1000 : 5000;
-        if (attempt < RETRY_LIMIT) await sleep(waitMs);
-        continue;
-      }
-
-      if (status && status >= 500 && attempt < RETRY_LIMIT) {
-        await sleep(2000);
-        continue;
-      }
-
-      // 4xx (non-429) or parse error — don't retry
-      throw mapGroqError(err);
+      console.warn(`[groq] Model ${model} failed, trying next:`, err);
     }
   }
 
-  throw mapGroqError(lastError);
-}
-
-function sleep(ms: number) {
-  return new Promise((r) => setTimeout(r, ms));
-}
-
-function mapGroqError(err: unknown): Error {
-  const status = (err as { status?: number })?.status;
-  const rawMsg = (err as Error)?.message || String(err);
-  console.error("[groq] mapGroqError details:", status, rawMsg);
-  if (status === 429) {
-    return new Error(`RATE_LIMIT: ${rawMsg}`);
-  }
-  if (status && status >= 500) {
-    return new Error(`SERVER_ERROR: ${rawMsg}`);
-  }
-  if (status && status >= 400) {
-    return new Error(`INVALID_REQUEST: ${rawMsg}`);
-  }
-  return new Error(`UNKNOWN_ERROR: ${rawMsg}`);
+  throw lastError;
 }

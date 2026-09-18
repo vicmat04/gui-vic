@@ -1,10 +1,11 @@
 // ──────────────────────────────────────────────────────────────────
-// POST /api/analyze — main endpoint: validate → AI → cross-verify
+// POST /api/analyze — main endpoint: validate → parse → AI → cross-verify
 //                     → duplicate-check → save in Notion
 // ──────────────────────────────────────────────────────────────────
 
 import { NextRequest, NextResponse } from "next/server";
 import { validateCedula } from "@/lib/validation";
+import { parseUploadedDocument } from "@/lib/document-parser";
 import { analyzeDocuments } from "@/lib/groq-client";
 import { crossVerifyVerdict } from "@/lib/cross-verify";
 import { isDuplicate } from "@/lib/duplicate-detection";
@@ -13,7 +14,6 @@ import { checkRateLimit } from "@/lib/rate-limiter";
 import { AIVerdict, CaseRecord, SubmitResponse, Verdict } from "@/types";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
-const ALLOWED_TYPES = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
 
 export async function POST(req: NextRequest): Promise<NextResponse<SubmitResponse>> {
   // ── Rate limit ────────────────────────────────────────────────
@@ -52,28 +52,28 @@ export async function POST(req: NextRequest): Promise<NextResponse<SubmitRespons
   }
 
   // ── Validate files (before calling AI) ───────────────────────
-  const fileError = validateUploadedFile(policyFile, "póliza") ??
+  const fileError =
+    validateUploadedFile(policyFile, "póliza") ??
     validateUploadedFile(reportFile, "informe médico");
   if (fileError) {
     return NextResponse.json({ success: false, error: fileError }, { status: 400 });
   }
 
-  // ── Convert to base64 ─────────────────────────────────────────
-  const [policyBytes, reportBytes] = await Promise.all([
-    policyFile!.arrayBuffer(),
-    reportFile!.arrayBuffer(),
-  ]);
-  const policyBase64 = Buffer.from(policyBytes).toString("base64");
-  const reportBase64 = Buffer.from(reportBytes).toString("base64");
-  const policyMime = policyFile!.type;
-  const reportMime = reportFile!.type;
-
   const createdAt = new Date().toISOString();
+
+  // ── Parse documents (server-side PDF text extraction or image base64) ──
+  console.log(`[analyze] Parsing documents for cédula: ${cedula}...`);
+  const [policyDoc, reportDoc] = await Promise.all([
+    parseUploadedDocument(policyFile!),
+    parseUploadedDocument(reportFile!),
+  ]);
+  console.log(`[analyze] Póliza: isText=${policyDoc.isText}, size=${policyFile!.size}`);
+  console.log(`[analyze] Informe: isText=${reportDoc.isText}, size=${reportFile!.size}`);
 
   // ── Call Groq ─────────────────────────────────────────────────
   let aiResult: AIVerdict;
   try {
-    aiResult = await analyzeDocuments(policyBase64, reportBase64, policyMime, reportMime);
+    aiResult = await analyzeDocuments(policyDoc, reportDoc);
   } catch (err: unknown) {
     const errorMsg = (err as Error)?.message ?? String(err);
     console.error("[analyze] Groq analyzeDocuments failed:", errorMsg);

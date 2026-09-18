@@ -20,11 +20,16 @@ export function crossVerifyVerdict(aiResult: AIVerdict): {
   // ── 1. Missing-document check ─────────────────────────────────
   const missingFields: string[] = [];
 
-  if (!medicalReport.procedure) missingFields.push("procedimiento (informe médico)");
-  if (!medicalReport.patientName) missingFields.push("nombre del paciente (informe médico)");
-  if (!policy.policyNumber) missingFields.push("número de póliza");
-  if (!policy.startDate) missingFields.push("fecha de inicio de vigencia");
-  if (!policy.coveredProcedures || policy.coveredProcedures.length === 0) {
+  if (!medicalReport?.procedure) missingFields.push("procedimiento (informe médico)");
+  if (!medicalReport?.patientName) missingFields.push("nombre del paciente (informe médico)");
+  if (!policy?.policyNumber) missingFields.push("número de póliza");
+  if (!policy?.startDate) missingFields.push("fecha de inicio de vigencia");
+
+  const coveredProcedures = Array.isArray(policy?.coveredProcedures)
+    ? policy.coveredProcedures
+    : [];
+
+  if (coveredProcedures.length === 0) {
     missingFields.push("procedimientos cubiertos (póliza)");
   }
 
@@ -37,11 +42,13 @@ export function crossVerifyVerdict(aiResult: AIVerdict): {
   }
 
   // ── 2. Coverage check ────────────────────────────────────────
-  const procedure = medicalReport.procedure!.toLowerCase();
-  const covered = policy.coveredProcedures.some((p) =>
+  const procedure = (medicalReport.procedure || "").toLowerCase();
+  const covered = coveredProcedures.some((p) =>
     procedure.includes(p.toLowerCase()) || p.toLowerCase().includes(procedure)
   );
-  const excluded = policy.exclusions.some((e) =>
+
+  const exclusions = Array.isArray(policy.exclusions) ? policy.exclusions : [];
+  const excluded = exclusions.some((e) =>
     procedure.includes(e.toLowerCase())
   );
 
@@ -57,12 +64,16 @@ export function crossVerifyVerdict(aiResult: AIVerdict): {
   const policyStart = policy.startDate ? new Date(policy.startDate) : null;
   const reportDate = medicalReport.reportDate ? new Date(medicalReport.reportDate) : null;
 
-  if (policyStart && reportDate) {
+  if (policyStart && reportDate && !isNaN(policyStart.getTime()) && !isNaN(reportDate.getTime())) {
     const daysSinceStart =
       (reportDate.getTime() - policyStart.getTime()) / (1000 * 60 * 60 * 24);
 
+    const waitingPeriods = policy.waitingPeriods && typeof policy.waitingPeriods === "object"
+      ? policy.waitingPeriods
+      : {};
+
     // Look for a waiting period that matches the procedure
-    for (const [procedureType, period] of Object.entries(policy.waitingPeriods ?? {})) {
+    for (const [procedureType, period] of Object.entries(waitingPeriods)) {
       const matches =
         procedure.includes(procedureType.toLowerCase()) ||
         procedureType.toLowerCase().includes(procedure);
@@ -90,6 +101,7 @@ export function crossVerifyVerdict(aiResult: AIVerdict): {
 
 /** Parses period strings like "6 meses", "180 días", "1 año" → days */
 function parsePeriodToDays(period: string): number | null {
+  if (typeof period !== "string") return null;
   const lower = period.toLowerCase().trim();
   const num = parseFloat(lower);
   if (isNaN(num)) return null;

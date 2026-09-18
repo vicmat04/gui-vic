@@ -6,57 +6,6 @@ import ResultCard from "@/components/ResultCard";
 import HistoryPanel from "@/components/HistoryPanel";
 import { SubmitResponse } from "@/types";
 
-/**
- * If the file is a PDF, render the first page to a canvas and return it
- * as a JPEG Blob. Otherwise return the file unchanged.
- * Runs 100% in the browser — no server-side PDF dependency needed.
- */
-async function normalizeToImage(file: File): Promise<File> {
-  const isPdf =
-    file.type === "application/pdf" ||
-    file.type.includes("pdf") ||
-    file.name.toLowerCase().endsWith(".pdf");
-
-  if (!isPdf) return file;
-
-  try {
-    const pdfjs = await import("pdfjs-dist");
-    pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
-
-    const arrayBuffer = await file.arrayBuffer();
-    const loadingTask = pdfjs.getDocument({ data: arrayBuffer });
-    const pdf = await loadingTask.promise;
-    const page = await pdf.getPage(1);
-
-    const viewport = page.getViewport({ scale: 1.5 });
-    const canvas = document.createElement("canvas");
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
-    const ctx = canvas.getContext("2d");
-
-    if (!ctx) return file;
-
-    await page.render({
-      canvasContext: ctx as unknown as CanvasRenderingContext2D,
-      viewport,
-      canvas,
-    } as Parameters<typeof page.render>[0]).promise;
-
-    const blob = await new Promise<Blob | null>((resolve) =>
-      canvas.toBlob((b) => resolve(b), "image/jpeg", 0.88)
-    );
-
-    if (!blob) return file;
-
-    return new File([blob], file.name.replace(/\.pdf$/i, ".jpg"), {
-      type: "image/jpeg",
-    });
-  } catch (pdfErr) {
-    console.warn("[normalizeToImage] Rasterization notice:", pdfErr);
-    return file;
-  }
-}
-
 type Step = "form" | "loading" | "result";
 
 export default function HomePage() {
@@ -103,15 +52,8 @@ export default function HomePage() {
     try {
       const body = new FormData();
       body.append("cedula", cedula);
-
-      // Convert PDFs to JPEG images before uploading — Groq vision only accepts images
-      const [normalizedPolicy, normalizedReport] = await Promise.all([
-        normalizeToImage(policyFile!),
-        normalizeToImage(reportFile!),
-      ]);
-
-      body.append("policy", normalizedPolicy);
-      body.append("report", normalizedReport);
+      body.append("policy", policyFile!);
+      body.append("report", reportFile!);
 
       const res = await fetch("/api/analyze", { method: "POST", body });
       const data: SubmitResponse = await res.json();
@@ -121,7 +63,7 @@ export default function HomePage() {
       console.error("[handleSubmit error]", err);
       setResult({
         success: false,
-        error: "Error de conexión o procesamiento. Verificá los archivos e intentá de nuevo.",
+        error: "Error de conexión o procesamiento. Verificá tu red e intentá de nuevo.",
       });
       setStep("result");
     }
@@ -239,7 +181,7 @@ export default function HomePage() {
 
               <button
                 type="submit"
-                className="w-full py-4 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold rounded-xl transition-all duration-150 shadow-md hover:shadow-lg"
+                className="w-full py-4 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold rounded-xl transition-all duration-150 shadow-md hover:shadow-lg cursor-pointer"
               >
                 Analizar Documentos
               </button>
@@ -248,7 +190,7 @@ export default function HomePage() {
             <div className="mt-4 text-center">
               <button
                 onClick={() => setShowHistory(!showHistory)}
-                className="text-blue-600 hover:underline text-sm font-medium"
+                className="text-blue-600 hover:underline text-sm font-medium cursor-pointer"
               >
                 {showHistory ? "Ocultar historial" : "Consultar historial de casos"}
               </button>
@@ -266,7 +208,7 @@ export default function HomePage() {
             </div>
             <h2 className="text-xl font-semibold text-gray-800 mb-2">Analizando documentos…</h2>
             <p className="text-gray-500 text-sm">
-              La IA está verificando cobertura, exclusiones y período de carencia.
+              La IA está extrayendo información y verificando cobertura, exclusiones y período de carencia.
               <br />
               Esto tarda unos segundos.
             </p>
@@ -318,7 +260,7 @@ const FileInput = forwardRef<HTMLInputElement, FileInputProps>(
           {file ? file.name : "Seleccionar PDF o imagen (máx. 10 MB)"}
         </span>
         {file && (
-          <span className="text-xs bg-green-200 text-green-800 px-2 py-1 rounded-md font-semibold">
+          <span className="text-xs bg-green-200 text-green-800 px-2.5 py-1 rounded-md font-semibold">
             {(file.size / 1024).toFixed(0)} KB
           </span>
         )}
