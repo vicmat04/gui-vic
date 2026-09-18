@@ -12,33 +12,43 @@ import { SubmitResponse } from "@/types";
  * Runs 100% in the browser — no server-side PDF dependency needed.
  */
 async function normalizeToImage(file: File): Promise<File> {
-  if (file.type !== "application/pdf") return file;
+  if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
+    return file;
+  }
 
-  const { getDocument, GlobalWorkerOptions } = await import("pdfjs-dist");
-  // Use the bundled worker via a CDN so we don't need to copy it ourselves
-  GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${
-    (await import("pdfjs-dist/package.json")).default.version
-  }/build/pdf.worker.min.mjs`;
+  try {
+    const pdfjs = await import("pdfjs-dist");
+    pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
-  const arrayBuffer = await file.arrayBuffer();
-  const pdf = await getDocument({ data: arrayBuffer }).promise;
-  const page = await pdf.getPage(1);
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+    const page = await pdf.getPage(1);
 
-  const viewport = page.getViewport({ scale: 2 }); // 2× for better OCR quality
-  const canvas = document.createElement("canvas");
-  canvas.width = viewport.width;
-  canvas.height = viewport.height;
-  const ctx = canvas.getContext("2d")!;
+    const viewport = page.getViewport({ scale: 1.5 });
+    const canvas = document.createElement("canvas");
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    const ctx = canvas.getContext("2d")!;
 
-  await page.render({ canvasContext: ctx as unknown as CanvasRenderingContext2D, viewport, canvas } as Parameters<typeof page.render>[0]).promise;
+    await page.render({
+      canvasContext: ctx as unknown as CanvasRenderingContext2D,
+      viewport,
+      canvas,
+    } as Parameters<typeof page.render>[0]).promise;
 
-  const blob = await new Promise<Blob>((resolve) =>
-    canvas.toBlob((b) => resolve(b!), "image/jpeg", 0.92)
-  );
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob((b) => resolve(b), "image/jpeg", 0.88)
+    );
 
-  return new File([blob], file.name.replace(/\.pdf$/i, ".jpg"), {
-    type: "image/jpeg",
-  });
+    if (!blob) throw new Error("No se pudo convertir la página del PDF a imagen.");
+
+    return new File([blob], file.name.replace(/\.pdf$/i, ".jpg"), {
+      type: "image/jpeg",
+    });
+  } catch (pdfErr) {
+    console.warn("Client-side PDF conversion failed, sending file as-is:", pdfErr);
+    return file;
+  }
 }
 
 type Step = "form" | "loading" | "result";
@@ -84,25 +94,29 @@ export default function HomePage() {
     if (!validate()) return;
 
     setStep("loading");
-    const body = new FormData();
-    body.append("cedula", cedula);
-
-    // Convert PDFs to JPEG images before uploading — Groq vision only accepts images
-    const [normalizedPolicy, normalizedReport] = await Promise.all([
-      normalizeToImage(policyFile!),
-      normalizeToImage(reportFile!),
-    ]);
-
-    body.append("policy", normalizedPolicy);
-    body.append("report", normalizedReport);
-
     try {
+      const body = new FormData();
+      body.append("cedula", cedula);
+
+      // Convert PDFs to JPEG images before uploading — Groq vision only accepts images
+      const [normalizedPolicy, normalizedReport] = await Promise.all([
+        normalizeToImage(policyFile!),
+        normalizeToImage(reportFile!),
+      ]);
+
+      body.append("policy", normalizedPolicy);
+      body.append("report", normalizedReport);
+
       const res = await fetch("/api/analyze", { method: "POST", body });
       const data: SubmitResponse = await res.json();
       setResult(data);
       setStep("result");
-    } catch {
-      setResult({ success: false, error: "Error de conexión. Revisá tu internet e intentá de nuevo." });
+    } catch (err: unknown) {
+      console.error("[handleSubmit error]", err);
+      setResult({
+        success: false,
+        error: "Error de conexión o procesamiento. Verificá los archivos e intentá de nuevo.",
+      });
       setStep("result");
     }
   }

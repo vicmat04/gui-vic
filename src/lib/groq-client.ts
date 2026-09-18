@@ -15,7 +15,8 @@ function getGroq(): Groq {
   return _groq;
 }
 
-const MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"; // vision model available on free tier
+const PRIMARY_MODEL = "qwen/qwen3.6-27b";
+const FALLBACK_MODEL = "qwen/qwen3.8-27b";
 
 const SYSTEM_PROMPT = `Eres un sistema de pre-autorización quirúrgica para una aseguradora.
 Recibirás dos imágenes: la PÓLIZA del paciente y el INFORME MÉDICO del hospital.
@@ -27,7 +28,7 @@ REGLAS ESTRICTAS:
 4. El campo "status" SOLO puede ser uno de: "preaprobado", "documentos_faltantes", "rechazado".
 5. "documentos_faltantes" aplica cuando: falta un archivo, falta un dato clave, o el documento no corresponde.
 6. "rechazado" aplica cuando el procedimiento no está cubierto o no cumple el período de carencia.
-7. Devuelve ÚNICAMENTE JSON válido, sin texto adicional, sin markdown.`;
+7. Devuelve ÚNICAMENTE un objeto JSON válido, sin texto adicional, sin markdown.`;
 
 const USER_PROMPT = `Analiza los documentos adjuntos y devuelve EXACTAMENTE este JSON:
 {
@@ -55,16 +56,21 @@ const USER_PROMPT = `Analiza los documentos adjuntos y devuelve EXACTAMENTE este
   }
 }`;
 
-async function callGroq(
+async function callGroqWithModel(
+  model: string,
   policyBase64: string,
   reportBase64: string,
   policyMime: string,
   reportMime: string
 ): Promise<AIVerdict> {
+  const safePolicyMime = policyMime.startsWith("image/") ? policyMime : "image/jpeg";
+  const safeReportMime = reportMime.startsWith("image/") ? reportMime : "image/jpeg";
+
   const response = await getGroq().chat.completions.create({
-    model: MODEL,
+    model,
     temperature: 0.1,
     max_tokens: 2048,
+    response_format: { type: "json_object" },
     messages: [
       { role: "system", content: SYSTEM_PROMPT },
       {
@@ -73,12 +79,12 @@ async function callGroq(
           { type: "text", text: "PÓLIZA:" },
           {
             type: "image_url",
-            image_url: { url: `data:${policyMime};base64,${policyBase64}` },
+            image_url: { url: `data:${safePolicyMime};base64,${policyBase64}` },
           },
           { type: "text", text: "INFORME MÉDICO:" },
           {
             type: "image_url",
-            image_url: { url: `data:${reportMime};base64,${reportBase64}` },
+            image_url: { url: `data:${safeReportMime};base64,${reportBase64}` },
           },
           { type: "text", text: USER_PROMPT },
         ],
@@ -87,9 +93,37 @@ async function callGroq(
   });
 
   const raw = response.choices[0]?.message?.content ?? "";
+  console.log(`[groq] [${model}] raw response:`, raw.slice(0, 200));
+
   // Strip possible markdown code fences
   const jsonText = raw.replace(/```json?\n?/gi, "").replace(/```/g, "").trim();
   return JSON.parse(jsonText) as AIVerdict;
+}
+
+async function callGroq(
+  policyBase64: string,
+  reportBase64: string,
+  policyMime: string,
+  reportMime: string
+): Promise<AIVerdict> {
+  try {
+    return await callGroqWithModel(
+      PRIMARY_MODEL,
+      policyBase64,
+      reportBase64,
+      policyMime,
+      reportMime
+    );
+  } catch (primaryErr: unknown) {
+    console.warn(`[groq] Primary model (${PRIMARY_MODEL}) failed, trying fallback:`, primaryErr);
+    return await callGroqWithModel(
+      FALLBACK_MODEL,
+      policyBase64,
+      reportBase64,
+      policyMime,
+      reportMime
+    );
+  }
 }
 
 const RETRY_LIMIT = 2;
@@ -107,6 +141,7 @@ export async function analyzeDocuments(
       return await callGroq(policyBase64, reportBase64, policyMime, reportMime);
     } catch (err: unknown) {
       lastError = err;
+      console.error(`[groq] Attempt ${attempt}/${RETRY_LIMIT} error:`, err);
 
       const status = (err as { status?: number })?.status;
 
@@ -140,14 +175,16 @@ function sleep(ms: number) {
 
 function mapGroqError(err: unknown): Error {
   const status = (err as { status?: number })?.status;
+  const rawMsg = (err as Error)?.message || String(err);
+  console.error("[groq] mapGroqError details:", status, rawMsg);
   if (status === 429) {
-    return new Error("RATE_LIMIT");
+    return new Error(`RATE_LIMIT: ${rawMsg}`);
   }
   if (status && status >= 500) {
-    return new Error("SERVER_ERROR");
+    return new Error(`SERVER_ERROR: ${rawMsg}`);
   }
   if (status && status >= 400) {
-    return new Error("INVALID_REQUEST");
+    return new Error(`INVALID_REQUEST: ${rawMsg}`);
   }
-  return new Error("UNKNOWN_ERROR");
+  return new Error(`UNKNOWN_ERROR: ${rawMsg}`);
 }

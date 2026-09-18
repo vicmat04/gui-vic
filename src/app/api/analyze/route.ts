@@ -75,13 +75,14 @@ export async function POST(req: NextRequest): Promise<NextResponse<SubmitRespons
   try {
     aiResult = await analyzeDocuments(policyBase64, reportBase64, policyMime, reportMime);
   } catch (err: unknown) {
-    const msg = (err as Error).message;
-    const userMessage =
-      msg === "RATE_LIMIT"
-        ? "El sistema de IA está ocupado. Intentá en unos segundos."
-        : msg === "INVALID_REQUEST"
-        ? "Verificá que los documentos subidos sean legibles."
-        : "Hubo un problema temporal con el servicio de IA.";
+    const errorMsg = (err as Error)?.message ?? String(err);
+    console.error("[analyze] Groq analyzeDocuments failed:", errorMsg);
+
+    const userMessage = errorMsg.includes("RATE_LIMIT")
+      ? "El sistema de IA está ocupado. Intentá en unos segundos."
+      : errorMsg.includes("INVALID_REQUEST")
+      ? "Verificá que los documentos subidos sean legibles (PDF o imagen)."
+      : "Hubo un problema temporal con el servicio de IA. Intentá nuevamente.";
 
     // Best-effort audit trail — do not let a Notion failure mask the real error
     try {
@@ -89,25 +90,32 @@ export async function POST(req: NextRequest): Promise<NextResponse<SubmitRespons
         cedula,
         policyNumber: "desconocido",
         verdict: "documentos_faltantes",
-        reason: `Error de procesamiento: ${msg}`,
+        reason: `Error de procesamiento IA: ${errorMsg.slice(0, 300)}`,
         medicalReport: {
-          patientName: null, procedure: null, diagnosis: null,
-          reportDate: null, physicianOrCenter: null, folioNumber: null,
+          patientName: null,
+          procedure: null,
+          diagnosis: null,
+          reportDate: null,
+          physicianOrCenter: null,
+          folioNumber: null,
         },
         policy: {
-          policyNumber: null, insuredName: null, startDate: null,
-          coveredProcedures: [], exclusions: [], waitingPeriods: {},
+          policyNumber: null,
+          insuredName: null,
+          startDate: null,
+          coveredProcedures: [],
+          exclusions: [],
+          waitingPeriods: {},
         },
         createdAt,
         errorState: true,
-        errorMessage: msg,
+        errorMessage: errorMsg.slice(0, 500),
       });
-    } catch {
-      // Notion save failed — log silently, don't override the real error
-      console.error("[analyze] Notion audit-trail save failed after Groq error");
+    } catch (auditErr) {
+      console.error("[analyze] Notion audit-trail save failed:", auditErr);
     }
 
-    return NextResponse.json({ success: false, error: userMessage }, { status: 503 });
+    return NextResponse.json({ success: false, error: userMessage }, { status: 502 });
   }
 
   // ── Validate AI output structure ──────────────────────────────
