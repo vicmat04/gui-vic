@@ -1,10 +1,11 @@
 // ──────────────────────────────────────────────────────────────────
 // Document Parser — server-side document parsing
 // Extracts clean text from digital PDFs or encodes images to base64
+// Uses pdf-parse@1.1.1 — no native deps, works in Vercel serverless
 // ──────────────────────────────────────────────────────────────────
 
-// @ts-expect-error - pdf-parse has no default export in its types but works at runtime
-import pdfParse from "pdf-parse";
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const pdfParse = require("pdf-parse");
 
 export interface ParsedDocument {
   filename: string;
