@@ -17,11 +17,11 @@ function getGroq(): Groq {
   return _groq;
 }
 
-// Models updated 2026-09 — see https://console.groq.com/docs/models
-const VISION_PRIMARY = "meta-llama/llama-4-scout-17b-16e-instruct";
-const VISION_FALLBACK = "meta-llama/llama-4-maverick-17b-128e-instruct";
-const TEXT_MODEL = "meta-llama/llama-4-maverick-17b-128e-instruct";
-const TEXT_FALLBACK = "qwen/qwen3-32b";
+// Models updated 2026-09 — compound-beta-mini available on free Groq tier
+const VISION_PRIMARY = "compound-beta-mini";
+const VISION_FALLBACK = "compound-beta-mini";
+const TEXT_MODEL = "compound-beta-mini";
+const TEXT_FALLBACK = "compound-beta-mini";
 
 const SYSTEM_PROMPT = `Eres un sistema de pre-autorización quirúrgica para una aseguradora.
 Recibirás dos documentos: la PÓLIZA del paciente y el INFORME MÉDICO del hospital (en texto o imagen).
