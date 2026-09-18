@@ -20,6 +20,10 @@ Sistema inteligente que automatiza la decisión de pre-autorización de cirugía
 
 **Veredictos posibles:** `preaprobado` | `documentos_faltantes` | `rechazado`
 
+## Documentos de prueba
+
+En la carpeta `casos/` de este repositorio vas a encontrar documentos de ejemplo (una póliza y un informe médico) para probar el sistema de pre-autorización. 
+
 ## Stack técnico
 
 | Componente | Tecnología |
