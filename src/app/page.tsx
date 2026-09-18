@@ -276,12 +276,15 @@ const FileInput = forwardRef<HTMLInputElement, FileInputProps>(
             accept={safeAccept}
             ref={ref}
             className="hidden"
+            onClick={(e) => {
+              // Limpiamos el valor al hacer clic (antes de que abra el diálogo)
+              // Así, si eligen exactamente el mismo archivo, el evento onChange se dispara igual.
+              (e.target as HTMLInputElement).value = "";
+            }}
             onChange={(e) => {
               const selected = e.target.files?.[0] ?? null;
               console.log(`[FileInput ${id}] File chosen:`, selected?.name, selected?.size);
               onChange(selected);
-              // Reset the input value so the same file can be selected again if needed
-              e.target.value = "";
             }}
           />
         </label>
