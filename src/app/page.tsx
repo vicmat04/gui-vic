@@ -236,50 +236,58 @@ interface FileInputProps {
 }
 
 const FileInput = forwardRef<HTMLInputElement, FileInputProps>(
-  ({ id, label, icon, accept, file, onChange, error }, ref) => (
-    <div>
-      <span className="block text-sm font-semibold text-gray-700 mb-2">
-        {icon} {label}
-      </span>
-      <div className="relative group">
-        <div
-          className={`flex items-center gap-3 w-full px-4 py-3.5 rounded-xl border-2 transition-all ${
-            error
-              ? "border-red-400 bg-red-50"
-              : file
-              ? "border-green-500 bg-green-50 shadow-sm"
-              : "border-dashed border-gray-300 group-hover:border-blue-500 group-hover:bg-blue-50/50"
-          }`}
-        >
-          <span className="text-2xl select-none">{file ? "✅" : "📁"}</span>
-          <span
-            className={`text-sm truncate flex-1 select-none ${
-              file ? "text-green-800 font-semibold" : "text-gray-500"
+  ({ id, label, icon, accept, file, onChange, error }, ref) => {
+    // Evitamos el bug de Chrome en Windows (lag de 10 segundos) al usar "image/*" junto a otros mime types.
+    // Si viene "image/*", lo reemplazamos por extensiones específicas.
+    const safeAccept = accept.replace(/image\/\*/g, "image/jpeg,image/png,image/webp");
+
+    return (
+      <div>
+        <label htmlFor={id} className="block text-sm font-semibold text-gray-700 mb-2 cursor-pointer">
+          {icon} {label}
+        </label>
+        <label htmlFor={id} className="relative group cursor-pointer block w-full">
+          <div
+            className={`flex items-center gap-3 w-full px-4 py-3.5 rounded-xl border-2 transition-all ${
+              error
+                ? "border-red-400 bg-red-50"
+                : file
+                ? "border-green-500 bg-green-50 shadow-sm"
+                : "border-dashed border-gray-300 group-hover:border-blue-500 group-hover:bg-blue-50/50"
             }`}
           >
-            {file ? file.name : "Hacé clic o arrastrá tu PDF o imagen acá"}
-          </span>
-          {file && (
-            <span className="text-xs bg-green-200 text-green-800 px-2.5 py-1 rounded-md font-semibold select-none">
-              {(file.size / 1024).toFixed(0)} KB
+            <span className="text-2xl select-none">{file ? "✅" : "📁"}</span>
+            <span
+              className={`text-sm truncate flex-1 select-none ${
+                file ? "text-green-800 font-semibold" : "text-gray-500"
+              }`}
+            >
+              {file ? file.name : "Hacé clic o arrastrá tu PDF o imagen acá"}
             </span>
-          )}
-        </div>
-        <input
-          id={id}
-          type="file"
-          accept={accept}
-          ref={ref}
-          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-          onChange={(e) => {
-            const selected = e.target.files?.[0] ?? null;
-            console.log(`[FileInput ${id}] File chosen:`, selected?.name, selected?.size);
-            onChange(selected);
-          }}
-        />
+            {file && (
+              <span className="text-xs bg-green-200 text-green-800 px-2.5 py-1 rounded-md font-semibold select-none">
+                {(file.size / 1024).toFixed(0)} KB
+              </span>
+            )}
+          </div>
+          <input
+            id={id}
+            type="file"
+            accept={safeAccept}
+            ref={ref}
+            className="hidden"
+            onChange={(e) => {
+              const selected = e.target.files?.[0] ?? null;
+              console.log(`[FileInput ${id}] File chosen:`, selected?.name, selected?.size);
+              onChange(selected);
+              // Reset the input value so the same file can be selected again if needed
+              e.target.value = "";
+            }}
+          />
+        </label>
+        {error && <p className="text-red-500 text-sm mt-1 font-medium">{error}</p>}
       </div>
-      {error && <p className="text-red-500 text-sm mt-1 font-medium">{error}</p>}
-    </div>
-  )
+    );
+  }
 );
 FileInput.displayName = "FileInput";
