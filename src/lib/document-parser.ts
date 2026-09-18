@@ -3,6 +3,7 @@
 // Extracts clean text from digital PDFs or encodes images to base64
 // ──────────────────────────────────────────────────────────────────
 
+// @ts-expect-error - pdf-parse has no default export in its types but works at runtime
 import pdfParse from "pdf-parse";
 
 export interface ParsedDocument {
@@ -47,7 +48,7 @@ export async function parseUploadedDocument(file: File): Promise<ParsedDocument>
 
   // Fallback: treat as image / base64 binary
   const base64 = Buffer.from(arrayBuffer).toString("base64");
-  const mimeType = type.startsWith("image/") ? type : "image/jpeg";
+  const mimeType = isPdf ? "application/pdf" : (type.startsWith("image/") ? type : "image/jpeg");
 
   return {
     filename: name,
