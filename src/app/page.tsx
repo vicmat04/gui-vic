@@ -6,6 +6,41 @@ import ResultCard from "@/components/ResultCard";
 import HistoryPanel from "@/components/HistoryPanel";
 import { SubmitResponse } from "@/types";
 
+/**
+ * If the file is a PDF, render the first page to a canvas and return it
+ * as a JPEG Blob. Otherwise return the file unchanged.
+ * Runs 100% in the browser — no server-side PDF dependency needed.
+ */
+async function normalizeToImage(file: File): Promise<File> {
+  if (file.type !== "application/pdf") return file;
+
+  const { getDocument, GlobalWorkerOptions } = await import("pdfjs-dist");
+  // Use the bundled worker via a CDN so we don't need to copy it ourselves
+  GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${
+    (await import("pdfjs-dist/package.json")).default.version
+  }/build/pdf.worker.min.mjs`;
+
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await getDocument({ data: arrayBuffer }).promise;
+  const page = await pdf.getPage(1);
+
+  const viewport = page.getViewport({ scale: 2 }); // 2× for better OCR quality
+  const canvas = document.createElement("canvas");
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+  const ctx = canvas.getContext("2d")!;
+
+  await page.render({ canvasContext: ctx as unknown as CanvasRenderingContext2D, viewport, canvas } as Parameters<typeof page.render>[0]).promise;
+
+  const blob = await new Promise<Blob>((resolve) =>
+    canvas.toBlob((b) => resolve(b!), "image/jpeg", 0.92)
+  );
+
+  return new File([blob], file.name.replace(/\.pdf$/i, ".jpg"), {
+    type: "image/jpeg",
+  });
+}
+
 type Step = "form" | "loading" | "result";
 
 export default function HomePage() {
@@ -51,8 +86,15 @@ export default function HomePage() {
     setStep("loading");
     const body = new FormData();
     body.append("cedula", cedula);
-    body.append("policy", policyFile!);
-    body.append("report", reportFile!);
+
+    // Convert PDFs to JPEG images before uploading — Groq vision only accepts images
+    const [normalizedPolicy, normalizedReport] = await Promise.all([
+      normalizeToImage(policyFile!),
+      normalizeToImage(reportFile!),
+    ]);
+
+    body.append("policy", normalizedPolicy);
+    body.append("report", normalizedReport);
 
     try {
       const res = await fetch("/api/analyze", { method: "POST", body });

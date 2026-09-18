@@ -83,24 +83,29 @@ export async function POST(req: NextRequest): Promise<NextResponse<SubmitRespons
         ? "Verificá que los documentos subidos sean legibles."
         : "Hubo un problema temporal con el servicio de IA.";
 
-    // Save error state to Notion for audit trail
-    await saveCase({
-      cedula,
-      policyNumber: "desconocido",
-      verdict: "documentos_faltantes",
-      reason: `Error de procesamiento: ${msg}`,
-      medicalReport: {
-        patientName: null, procedure: null, diagnosis: null,
-        reportDate: null, physicianOrCenter: null, folioNumber: null,
-      },
-      policy: {
-        policyNumber: null, insuredName: null, startDate: null,
-        coveredProcedures: [], exclusions: [], waitingPeriods: {},
-      },
-      createdAt,
-      errorState: true,
-      errorMessage: msg,
-    });
+    // Best-effort audit trail — do not let a Notion failure mask the real error
+    try {
+      await saveCase({
+        cedula,
+        policyNumber: "desconocido",
+        verdict: "documentos_faltantes",
+        reason: `Error de procesamiento: ${msg}`,
+        medicalReport: {
+          patientName: null, procedure: null, diagnosis: null,
+          reportDate: null, physicianOrCenter: null, folioNumber: null,
+        },
+        policy: {
+          policyNumber: null, insuredName: null, startDate: null,
+          coveredProcedures: [], exclusions: [], waitingPeriods: {},
+        },
+        createdAt,
+        errorState: true,
+        errorMessage: msg,
+      });
+    } catch {
+      // Notion save failed — log silently, don't override the real error
+      console.error("[analyze] Notion audit-trail save failed after Groq error");
+    }
 
     return NextResponse.json({ success: false, error: userMessage }, { status: 503 });
   }
@@ -147,7 +152,20 @@ export async function POST(req: NextRequest): Promise<NextResponse<SubmitRespons
     suspicious,
   };
 
-  const caseId = await saveCase(record);
+  let caseId: string | undefined;
+  try {
+    caseId = await saveCase(record);
+  } catch (notionErr) {
+    console.error("[analyze] Notion save failed:", notionErr);
+    // Return the verdict anyway — Notion is storage, not the decision
+    return NextResponse.json({
+      success: true,
+      verdict: finalVerdict,
+      reason: finalReason,
+      suspicious,
+      warning: "El resultado no pudo guardarse en la base de datos.",
+    });
+  }
 
   return NextResponse.json({
     success: true,
