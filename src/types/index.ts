@@ -45,6 +45,7 @@ export interface CaseRecord {
   suspicious?: boolean;
   errorState?: boolean;
   errorMessage?: string;
+  documents?: { name: string; url: string }[];
 }
 
 export interface HistoryQuery {

@@ -55,8 +55,6 @@ async function uploadFileToNotion(file: File): Promise<string | null> {
       return null;
     }
 
-    // SAFETY: allowlist the upload_url host — it's server-controlled by Notion's own API
-    // response, but we still refuse to fetch() an unexpected host as defense in depth.
     if (!String(created.upload_url).startsWith("https://api.notion.com/")) {
       console.error("[notion] unexpected upload_url host, aborting:", created.upload_url);
       return null;
@@ -64,6 +62,8 @@ async function uploadFileToNotion(file: File): Promise<string | null> {
 
     const form = new FormData();
     form.append("file", file, file.name);
+
+    // SAFETY: upload_url host is allowlisted above to ensure we only hit api.notion.com
     const sendRes = await fetch(created.upload_url, {
       method: "POST",
       headers: {
@@ -352,5 +352,14 @@ function pageToRecord(page: any): CaseRecord {
     createdAt: props["Fecha"]?.date?.start ?? new Date().toISOString(),
     suspicious: props["Sospechoso"]?.checkbox ?? false,
     errorState: props["Error"]?.checkbox ?? false,
+    documents: (props["Documentos"]?.files ?? []).map((f: Record<string, unknown>) => {
+      const type = typeof f.type === "string" ? f.type : "";
+      const fileData = f.file as { url: string } | undefined;
+      const extData = f.external as { url: string } | undefined;
+      return {
+        name: typeof f.name === "string" ? f.name : "documento",
+        url: type === "file" && fileData ? fileData.url : (extData?.url ?? ""),
+      };
+    }),
   };
 }

@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Herramientas de IA — Agente de Pre-Autorización Quirúrgica</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      color: #1e293b;
+      background: #ffffff;
+      line-height: 1.7;
+      padding: 48px 64px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    /* ── Cover header ── */
+    .cover {
+      text-align: center;
+      padding: 40px 0 32px;
+      border-bottom: 3px solid #2563eb;
+      margin-bottom: 40px;
+    }
+    .cover .icon {
+      font-size: 56px;
+      margin-bottom: 12px;
+    }
+    .cover h1 {
+      font-size: 26px;
+      font-weight: 800;
+      color: #1e3a5f;
+      letter-spacing: -0.5px;
+      margin-bottom: 6px;
+    }
+    .cover .subtitle {
+      font-size: 15px;
+      color: #64748b;
+      font-weight: 400;
+    }
+    .cover .badge {
+      display: inline-block;
+      margin-top: 16px;
+      padding: 6px 20px;
+      background: #2563eb;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 20px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    /* ── Sections ── */
+    .section {
+      margin-bottom: 36px;
+      page-break-inside: avoid;
+    }
+    .section-number {
+      display: inline-block;
+      width: 32px;
+      height: 32px;
+      line-height: 32px;
+      text-align: center;
+      background: #2563eb;
+      color: white;
+      font-weight: 700;
+      font-size: 14px;
+      border-radius: 8px;
+      margin-right: 10px;
+      vertical-align: middle;
+    }
+    .section h2 {
+      display: inline;
+      font-size: 18px;
+      font-weight: 700;
+      color: #1e3a5f;
+      vertical-align: middle;
+    }
+    .section-desc {
+      margin-top: 12px;
+      font-size: 14px;
+      color: #475569;
+    }
+
+    /* ── Tool cards ── */
+    .tool-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-left: 4px solid #2563eb;
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin-top: 16px;
+      page-break-inside: avoid;
+    }
+    .tool-card.green { border-left-color: #059669; }
+    .tool-card.purple { border-left-color: #7c3aed; }
+    .tool-card.amber { border-left-color: #d97706; }
+
+    .tool-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .tool-icon {
+      font-size: 28px;
+    }
+    .tool-name {
+      font-size: 16px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .tool-id {
+      font-size: 12px;
+      font-family: 'Courier New', monospace;
+      background: #e2e8f0;
+      padding: 2px 8px;
+      border-radius: 4px;
+      color: #334155;
+      margin-left: 8px;
+    }
+    .tool-body {
+      font-size: 13.5px;
+      color: #475569;
+    }
+    .tool-body strong {
+      color: #1e293b;
+    }
+
+    /* ── Key-value list ── */
+    .kv-list {
+      margin-top: 10px;
+      display: grid;
+      grid-template-columns: 140px 1fr;
+      gap: 4px 12px;
+      font-size: 13px;
+    }
+    .kv-list .key {
+      font-weight: 600;
+      color: #334155;
+    }
+    .kv-list .val {
+      color: #64748b;
+    }
+
+    /* ── Architecture diagram ── */
+    .diagram {
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin-top: 20px;
+      font-family: 'Courier New', monospace;
+      font-size: 12.5px;
+      line-height: 1.8;
+      color: #334155;
+      white-space: pre;
+    }
+
+    /* ── Footer ── */
+    .footer {
+      margin-top: 48px;
+      padding-top: 20px;
+      border-top: 2px solid #e2e8f0;
+      text-align: center;
+      font-size: 12px;
+      color: #94a3b8;
+    }
+    .footer a {
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    /* ── Print tweaks ── */
+    @media print {
+      body { padding: 32px 48px; }
+      .section { page-break-inside: avoid; }
+      .tool-card { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ════════════════ PORTADA ════════════════ -->
+  <div class="cover">
+    <div class="icon">🏥</div>
+    <h1>Detalle de Herramientas de<br>Inteligencia Artificial Utilizadas</h1>
+    <p class="subtitle">Agente de Pre-Autorización Quirúrgica</p>
+    <span class="badge">hackIAthon 2026</span>
+  </div>
+
+  <!-- ════════════════ SECCIÓN 1 ════════════════ -->
+  <div class="section">
+    <span class="section-number">1</span>
+    <h2>IA Integrada en la Aplicación (Inferencia en Producción)</h2>
+    <p class="section-desc">
+      El agente utiliza dos modelos de lenguaje de gran escala (LLMs) a través de una API compatible,
+      cada uno especializado en una etapa distinta del flujo de análisis. La combinación de un modelo
+      multimodal (visión) con un modelo de razonamiento lógico (texto) garantiza precisión en la
+      extracción de datos y en la emisión del veredicto clínico.
+    </p>
+
+    <!-- Card 1: Qwen -->
+    <div class="tool-card">
+      <div class="tool-header">
+        <span class="tool-icon">👁️</span>
+        <span class="tool-name">Qwen 3.8-27B</span>
+        <span class="tool-id">qwen/qwen3.8-27b</span>
+      </div>
+      <p class="tool-body">
+        <strong>Rol:</strong> Motor de extracción documental multimodal (Visión + Texto).<br>
+        Este modelo recibe directamente los archivos crudos subidos por el usuario (PDFs e imágenes escaneadas)
+        y es capaz de "leer" visualmente el contenido para extraer las entidades médicas y de seguros relevantes.
+      </p>
+      <div class="kv-list">
+        <span class="key">Tipo</span><span class="val">Vision-Language Model (VLM), 27 mil millones de parámetros</span>
+        <span class="key">Entrada</span><span class="val">Imágenes base64 de cada página del documento (PDF renderizado o foto)</span>
+        <span class="key">Salida</span><span class="val">JSON estructurado con campos: cédula, póliza, diagnóstico, procedimiento, exclusiones, carencias</span>
+        <span class="key">¿Por qué?</span><span class="val">Es el único modelo multimodal disponible en la cuenta que soporta entrada de imágenes para documentos escaneados</span>
+      </div>
+    </div>
+
+    <!-- Card 2: GPT-OSS -->
+    <div class="tool-card green">
+      <div class="tool-header">
+        <span class="tool-icon">🧠</span>
+        <span class="tool-name">GPT-OSS-120B</span>
+        <span class="tool-id">openai/gpt-oss-120b</span>
+      </div>
+      <p class="tool-body">
+        <strong>Rol:</strong> Motor de razonamiento lógico y cross-verification.<br>
+        Una vez extraídos los datos del informe médico y la póliza, este modelo realiza el cruce inteligente:
+        compara el procedimiento solicitado contra la lista de coberturas, verifica que no haya exclusiones aplicables,
+        evalúa si se cumplieron los períodos de carencia y emite un veredicto fundamentado.
+      </p>
+      <div class="kv-list">
+        <span class="key">Tipo</span><span class="val">Large Language Model (LLM), 120 mil millones de parámetros</span>
+        <span class="key">Entrada</span><span class="val">JSON estructurado con datos del informe médico + datos de la póliza</span>
+        <span class="key">Salida</span><span class="val">Veredicto (preaprobado / rechazado / documentos_faltantes), razón detallada y flag de sospecha</span>
+        <span class="key">Configuración</span><span class="val"><code>reasoning_effort: "medium"</code> — balance entre profundidad de análisis y velocidad de respuesta</span>
+        <span class="key">¿Por qué?</span><span class="val">Modelo de texto puro sin capacidades web/agentic, lo que evita alucinaciones por búsquedas externas (requisito del plan técnico)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════ DIAGRAMA ════════════════ -->
+  <div class="section">
+    <span class="section-number">2</span>
+    <h2>Arquitectura del Flujo de IA</h2>
+    <p class="section-desc">
+      El siguiente diagrama muestra cómo interactúan ambos modelos dentro del pipeline de análisis:
+    </p>
+    <div class="diagram">
+  📄 Póliza (PDF/img)  ──┐
+                         ├──▶  Qwen 3.8-27B (Visión)  ──▶  JSON extraído
+  🩺 Informe (PDF/img)  ──┘         │                        │
+                                    │                        ▼
+                                    │              ┌─────────────────────┐
+                                    │              │  Validación de      │
+                                    │              │  esquema JSON       │
+                                    │              │  (16 campos)        │
+                                    │              └────────┬────────────┘
+                                    │                       │
+                                    │                       ▼
+                                    │           GPT-OSS-120B (Texto)
+                                    │              │
+                                    │              ├── Cobertura ✓/✗
+                                    │              ├── Exclusiones ✓/✗
+                                    │              ├── Carencia ✓/✗
+                                    │              └── Consistencia ✓/✗
+                                    │                       │
+                                    │                       ▼
+                                    │              ┌─────────────────────┐
+                                    └──────────────│  Veredicto Final    │
+                                                   │  + Razón + Flag     │
+                                                   └─────────────────────┘</div>
+  </div>
+
+  <!-- ════════════════ SECCIÓN 3 ════════════════ -->
+  <div class="section">
+    <span class="section-number">3</span>
+    <h2>IA para el Ciclo de Desarrollo (Agentic Coding)</h2>
+    <p class="section-desc">
+      Además de los modelos que corren en producción dentro de la aplicación, se utilizaron herramientas
+      de IA avanzada durante todo el ciclo de desarrollo del proyecto:
+    </p>
+
+    <!-- Card 3: Pi Agent -->
+    <div class="tool-card purple">
+      <div class="tool-header">
+        <span class="tool-icon">🤖</span>
+        <span class="tool-name">Agente Pi (Gentle AI Orchestrator)</span>
+      </div>
+      <p class="tool-body">
+        Entorno de programación asistida por IA con capacidad de <strong>ejecutar código, editar archivos,
+        correr comandos y testear en tiempo real</strong>. El agente operó bajo el flujo
+        <em>Organic Driven Development (ODD)</em>, un paradigma que estructura el trabajo en tareas
+        incrementales con validación continua.
+      </p>
+      <div class="kv-list">
+        <span class="key">Tareas realizadas</span><span class="val">Refactorización de componentes React/Next.js, integración con Notion API, corrección de bugs en producción</span>
+        <span class="key">Testing</span><span class="val">Pruebas end-to-end automatizadas vía Chrome DevTools MCP (navegador real controlado por IA)</span>
+        <span class="key">Code Quality</span><span class="val">Análisis estático con TypeScript LSP, ESLint y AST-grep en cada edición</span>
+        <span class="key">Hallazgos</span><span class="val">Detección y corrección de bug de timezone (fechas mostraban un día antes en Panamá UTC-5), problemas de accesibilidad (a11y), y fallo en modelo de IA por token budget insuficiente</span>
+      </div>
+    </div>
+
+    <!-- Card 4: Chrome DevTools -->
+    <div class="tool-card amber">
+      <div class="tool-header">
+        <span class="tool-icon">🌐</span>
+        <span class="tool-name">Chrome DevTools MCP</span>
+      </div>
+      <p class="tool-body">
+        Protocolo que permite al agente de IA <strong>controlar un navegador Chrome real</strong> de forma programática:
+        navegar páginas, llenar formularios, hacer clic en botones, tomar screenshots y leer la consola de errores.
+        Esto permitió probar el flujo completo de la aplicación (subida de archivos, análisis, historial) sin intervención
+        humana manual, verificando que la UI y el backend funcionan correctamente de punta a punta.
+      </p>
+    </div>
+  </div>
+
+  <!-- ════════════════ SECCIÓN 4 ════════════════ -->
+  <div class="section">
+    <span class="section-number">4</span>
+    <h2>Medidas Anti-Alucinación</h2>
+    <p class="section-desc">
+      Se implementaron múltiples capas de protección para garantizar que la IA no invente datos clínicos:
+    </p>
+
+    <div class="tool-card">
+      <div class="tool-body">
+        <strong>1. Modelos sin acceso a internet:</strong> Se descartó intencionalmente el modelo <code>groq/compound-mini</code>
+        (que tiene capacidades de búsqueda web) para evitar que la IA "busque" información médica en internet.
+        Los modelos usados operan exclusivamente sobre los documentos proporcionados por el usuario.<br><br>
+
+        <strong>2. Validación de esquema estricta:</strong> El JSON devuelto por la IA se valida contra un esquema
+        exacto de 16 campos tipados (strings, arrays, records). Si la estructura no coincide, el caso se rechaza
+        antes de emitir cualquier veredicto.<br><br>
+
+        <strong>3. Cross-verification en dos fases:</strong> La extracción (Fase 1, modelo de visión) y la evaluación
+        (Fase 2, modelo de texto) usan modelos completamente distintos. Esto crea una verificación cruzada natural
+        donde el segundo modelo valida la coherencia de lo que extrajo el primero.<br><br>
+
+        <strong>4. Flag de sospecha automático:</strong> Si la IA detecta inconsistencias entre los documentos
+        (ej: la cédula del informe no coincide con la de la póliza), marca el caso como "sospechoso" para revisión
+        manual humana, en lugar de emitir un veredicto automático.
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════ SECCIÓN 5 ════════════════ -->
+  <div class="section">
+    <span class="section-number">5</span>
+    <h2>Técnicas de Prompt Engineering y Formateo</h2>
+    <p class="section-desc">
+      El éxito de la automatización clínica no solo depende del modelo, sino de cómo se estructura la consulta y la respuesta esperada:
+    </p>
+
+    <div class="tool-card">
+      <div class="tool-body">
+        <strong>1. System Prompts Clínicos:</strong> Se diseñó un contexto restrictivo que obliga al modelo a actuar como un "auditor médico estricto". Se le instruye explícitamente: <em>"No asumas información. Si un dato no está en el texto proporcionado, devuelve null o un arreglo vacío"</em>.<br><br>
+
+        <strong>2. Forzado de Esquema JSON (JSON Mode):</strong> En lugar de respuestas de texto libre, se utiliza una instrucción fuerte para que el LLM devuelva la información mapeada exactamente a una interfaz de TypeScript predefinida de 16 propiedades. Esto permite conectar la salida de la IA directamente con la base de datos sin parseos propensos a fallos.<br><br>
+
+        <strong>3. Estrategia de Fallbacks y Retries:</strong> Se implementó un algoritmo resistente a fallos en la capa de conexión con Groq. Si la IA devuelve un formato inválido o sufre un timeout, el sistema captura el error y reintenta la consulta automáticamente (hasta 2 veces) usando modelos de respaldo.
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════ SECCIÓN 6 ════════════════ -->
+  <div class="section">
+    <span class="section-number">6</span>
+    <h2>Infraestructura de Inferencia y Persistencia</h2>
+    <p class="section-desc">
+      La capa de inteligencia artificial se apoya en herramientas de infraestructura de última generación para garantizar respuestas en tiempo real:
+    </p>
+
+    <div class="tool-card purple">
+      <div class="tool-header">
+        <span class="tool-icon">⚡</span>
+        <span class="tool-name">Groq LPU Inference Engine</span>
+      </div>
+      <p class="tool-body">
+        El ruteo hacia los modelos se realiza a través de la infraestructura de inferencia ultra-rápida de Groq.
+        Dado que el análisis requiere leer documentos largos (informes médicos y pólizas enteras), la velocidad
+        de procesamiento de tokens es crítica para no bloquear la experiencia del usuario (UX).
+      </p>
+    </div>
+
+    <div class="tool-card">
+      <div class="tool-header">
+        <span class="tool-icon">📓</span>
+        <span class="tool-name">Notion API (Vector / Record Storage)</span>
+      </div>
+      <p class="tool-body">
+        Funciona como la capa de persistencia y memoria del sistema. Cada veredicto emitido por la IA se archiva
+        inmediatamente con un cruce de 18 columnas de metadatos clínicos. Además, se utiliza la
+        <strong>Notion File Upload API</strong> para adjuntar las pruebas documentales originales (PDFs) junto al veredicto de la IA, creando una pista de auditoría inmutable.
+      </p>
+    </div>
+  </div>
+
+  <!-- ════════════════ FOOTER ════════════════ -->
+  <div class="footer">
+    <p>
+      📎 Repositorio: <a href="https://github.com/vicmat04/gui-vic">github.com/vicmat04/gui-vic</a><br>
+      🌐 Agente en producción: <a href="https://gui-vic.vercel.app">gui-vic.vercel.app</a>
+    </p>
+    <p style="margin-top: 8px;">hackIAthon 2026 — Agente de Pre-Autorización Quirúrgica</p>
+  </div>
+
+</body>
+</html>

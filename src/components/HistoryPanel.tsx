@@ -150,6 +150,21 @@ export default function HistoryPanel({ isOpen = true }: { isOpen?: boolean }) {
                 {c.suspicious && (
                   <p className="text-xs text-orange-500 mt-1">⚠️ Marcado para revisión manual</p>
                 )}
+                {c.documents && c.documents.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-gray-200 flex flex-wrap gap-2">
+                    {c.documents.map((doc, idx) => (
+                      <a
+                        key={idx}
+                        href={doc.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-md text-xs font-medium text-gray-700 hover:bg-gray-50 hover:text-blue-600 transition-colors"
+                      >
+                        📄 {doc.name}
+                      </a>
+                    ))}
+                  </div>
+                )}
               </div>
             ))
           )}
