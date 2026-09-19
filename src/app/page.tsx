@@ -205,7 +205,7 @@ export default function HomePage() {
 
                   <button
                     type="submit"
-                    className="w-full py-4 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold rounded-xl transition-all duration-150 shadow-md hover:shadow-lg cursor-pointer"
+                    className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold rounded-xl transition-all duration-150 shadow-md hover:shadow-lg cursor-pointer"
                   >
                     Analizar Documentos
                   </button>
