@@ -95,110 +95,147 @@ export default function HomePage() {
 
         {/* Form */}
         {step === "form" && (
-          <div className="bg-white rounded-2xl shadow-xl p-8">
-            <form onSubmit={handleSubmit} className="space-y-6" noValidate>
-              {/* Cédula */}
-              <div>
-                <label htmlFor="cedula" className="block text-sm font-semibold text-gray-700 mb-2">
-                  🪪 Número de Cédula
-                </label>
-                <input
-                  id="cedula"
-                  name="cedula"
-                  type="text"
-                  value={cedula}
-                  onChange={(e) => {
-                    setCedula(e.target.value);
-                    if (errors.cedula) {
-                      setErrors((prev) => {
-                        const copy = { ...prev };
-                        delete copy.cedula;
-                        return copy;
-                      });
-                    }
-                  }}
-                  placeholder="Ej: 8-888-8888"
-                  autoFocus
-                  className={`w-full px-5 py-4 rounded-xl border-2 transition-all outline-none
-                    text-gray-900 text-lg font-semibold tracking-widest
-                    placeholder:text-gray-300 placeholder:font-normal placeholder:tracking-normal
-                    focus:ring-4 focus:ring-blue-100
-                    ${
-                      errors.cedula
-                        ? "border-red-400 bg-red-50"
-                        : cedula
-                        ? "border-blue-500 bg-blue-50 shadow-inner"
-                        : "border-gray-300 hover:border-blue-300 focus:border-blue-500"
-                    }`}
-                />
-                {cedula && !errors.cedula && (
-                  <p className="text-blue-500 text-xs mt-1 font-medium">✓ Cédula ingresada</p>
-                )}
-                {errors.cedula && (
-                  <p className="text-red-500 text-sm mt-1">{errors.cedula}</p>
-                )}
+          <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+
+            {/* ── Panel 1: Nueva consulta ── */}
+            <button
+              type="button"
+              onClick={() => setShowHistory(false)}
+              className={`w-full flex items-center justify-between px-6 py-4 text-left transition-colors cursor-pointer ${
+                !showHistory
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-50 text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              <span className="font-semibold text-sm tracking-wide">📋 Nueva consulta</span>
+              <span className="text-lg">{!showHistory ? "▲" : "▼"}</span>
+            </button>
+
+            <div
+              className={`transition-all duration-300 ease-in-out overflow-hidden ${
+                !showHistory ? "max-h-[800px] opacity-100" : "max-h-0 opacity-0"
+              }`}
+            >
+              <div className="p-8">
+                <form onSubmit={handleSubmit} className="space-y-6" noValidate>
+                  {/* Cédula */}
+                  <div>
+                    <label htmlFor="cedula" className="block text-sm font-semibold text-gray-700 mb-2">
+                      🪪 Número de Cédula
+                    </label>
+                    <input
+                      id="cedula"
+                      name="cedula"
+                      type="text"
+                      value={cedula}
+                      onChange={(e) => {
+                        setCedula(e.target.value);
+                        if (errors.cedula) {
+                          setErrors((prev) => {
+                            const copy = { ...prev };
+                            delete copy.cedula;
+                            return copy;
+                          });
+                        }
+                      }}
+                      placeholder="Ej: 8-888-8888"
+                      autoFocus
+                      className={`w-full px-5 py-4 rounded-xl border-2 transition-all outline-none
+                        text-gray-900 text-lg font-semibold tracking-widest
+                        placeholder:text-gray-300 placeholder:font-normal placeholder:tracking-normal
+                        focus:ring-4 focus:ring-blue-100
+                        ${
+                          errors.cedula
+                            ? "border-red-400 bg-red-50"
+                            : cedula
+                            ? "border-blue-500 bg-blue-50 shadow-inner"
+                            : "border-gray-300 hover:border-blue-300 focus:border-blue-500"
+                        }`}
+                    />
+                    {cedula && !errors.cedula && (
+                      <p className="text-blue-500 text-xs mt-1 font-medium">✓ Cédula ingresada</p>
+                    )}
+                    {errors.cedula && (
+                      <p className="text-red-500 text-sm mt-1">{errors.cedula}</p>
+                    )}
+                  </div>
+
+                  {/* Póliza */}
+                  <FileInput
+                    id="policy"
+                    label="Póliza del Paciente"
+                    icon="📄"
+                    accept=".pdf,.PDF,application/pdf,image/*,.jpg,.jpeg,.png,.webp"
+                    file={policyFile}
+                    onChange={(f) => {
+                      setPolicyFile(f);
+                      if (errors.policy) {
+                        setErrors((prev) => {
+                          const next = { ...prev };
+                          delete next.policy;
+                          return next;
+                        });
+                      }
+                    }}
+                    error={errors.policy}
+                    ref={policyRef}
+                  />
+
+                  {/* Informe médico */}
+                  <FileInput
+                    id="report"
+                    label="Informe Médico"
+                    icon="🩺"
+                    accept=".pdf,.PDF,application/pdf,image/*,.jpg,.jpeg,.png,.webp"
+                    file={reportFile}
+                    onChange={(f) => {
+                      setReportFile(f);
+                      if (errors.report) {
+                        setErrors((prev) => {
+                          const next = { ...prev };
+                          delete next.report;
+                          return next;
+                        });
+                      }
+                    }}
+                    error={errors.report}
+                    ref={reportRef}
+                  />
+
+                  <button
+                    type="submit"
+                    className="w-full py-4 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold rounded-xl transition-all duration-150 shadow-md hover:shadow-lg cursor-pointer"
+                  >
+                    Analizar Documentos
+                  </button>
+                </form>
               </div>
-
-              {/* Póliza */}
-              <FileInput
-                id="policy"
-                label="Póliza del Paciente"
-                icon="📄"
-                accept=".pdf,.PDF,application/pdf,image/*,.jpg,.jpeg,.png,.webp"
-                file={policyFile}
-                onChange={(f) => {
-                  setPolicyFile(f);
-                  if (errors.policy) {
-                    setErrors((prev) => {
-                      const next = { ...prev };
-                      delete next.policy;
-                      return next;
-                    });
-                  }
-                }}
-                error={errors.policy}
-                ref={policyRef}
-              />
-
-              {/* Informe médico */}
-              <FileInput
-                id="report"
-                label="Informe Médico"
-                icon="🩺"
-                accept=".pdf,.PDF,application/pdf,image/*,.jpg,.jpeg,.png,.webp"
-                file={reportFile}
-                onChange={(f) => {
-                  setReportFile(f);
-                  if (errors.report) {
-                    setErrors((prev) => {
-                      const next = { ...prev };
-                      delete next.report;
-                      return next;
-                    });
-                  }
-                }}
-                error={errors.report}
-                ref={reportRef}
-              />
-
-              <button
-                type="submit"
-                className="w-full py-4 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold rounded-xl transition-all duration-150 shadow-md hover:shadow-lg cursor-pointer"
-              >
-                Analizar Documentos
-              </button>
-            </form>
-
-            <div className="mt-4 text-center">
-              <button
-                onClick={() => setShowHistory(!showHistory)}
-                className="text-blue-600 hover:underline text-sm font-medium cursor-pointer"
-              >
-                {showHistory ? "Ocultar historial" : "Consultar historial de casos"}
-              </button>
             </div>
 
-            {showHistory && <HistoryPanel />}
+            {/* ── Panel 2: Historial ── */}
+            <button
+              type="button"
+              onClick={() => setShowHistory(true)}
+              className={`w-full flex items-center justify-between px-6 py-4 text-left transition-colors cursor-pointer border-t border-gray-100 ${
+                showHistory
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-50 text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              <span className="font-semibold text-sm tracking-wide">🗂️ Consultar historial de casos</span>
+              <span className="text-lg">{showHistory ? "▲" : "▼"}</span>
+            </button>
+
+            <div
+              className={`transition-all duration-300 ease-in-out overflow-hidden ${
+                showHistory ? "max-h-[600px] opacity-100" : "max-h-0 opacity-0"
+              }`}
+            >
+              <div className="p-6">
+                <HistoryPanel />
+              </div>
+            </div>
+
           </div>
         )}
 
