@@ -16,6 +16,14 @@ const VERDICT_COLORS: Record<Verdict, string> = {
   rechazado: "text-red-700 bg-red-50",
 };
 
+// Notion's date-only values ("2026-09-18") parse as UTC midnight, which
+// rolls back a day in negative-UTC timezones (e.g. Panama, UTC-5). Reading
+// the Y-M-D digits directly and building a local-time Date avoids that shift.
+function formatCaseDate(dateStr: string): string {
+  const [y, m, d] = dateStr.slice(0, 10).split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("es-PA");
+}
+
 export default function HistoryPanel() {
   const [cedula, setCedula] = useState("");
   const [policyNumber, setPolicyNumber] = useState("");
@@ -54,14 +62,20 @@ export default function HistoryPanel() {
       </h3>
       <form onSubmit={handleSearch} className="space-y-3 mb-4">
         <input
+          id="history-cedula"
+          name="cedula"
           type="text"
+          aria-label="Cédula"
           value={cedula}
           onChange={(e) => setCedula(e.target.value)}
           placeholder="Cédula"
           className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-blue-400"
         />
         <input
+          id="history-policy-number"
+          name="policyNumber"
           type="text"
+          aria-label="Número de póliza"
           value={policyNumber}
           onChange={(e) => setPolicyNumber(e.target.value)}
           placeholder="Número de póliza"
@@ -94,7 +108,7 @@ export default function HistoryPanel() {
                     {VERDICT_LABELS[c.verdict]}
                   </span>
                   <span className="text-xs text-gray-400">
-                    {new Date(c.createdAt).toLocaleDateString("es-PA")}
+                    {formatCaseDate(c.createdAt)}
                   </span>
                 </div>
                 <p className="text-sm text-gray-700 mt-1">
