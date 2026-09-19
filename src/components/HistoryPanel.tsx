@@ -72,7 +72,7 @@ export default function HistoryPanel() {
           value={cedula}
           onChange={(e) => setCedula(e.target.value)}
           placeholder="Ej: 8-888-8888"
-          className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-blue-400"
+          className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-blue-400 placeholder:text-gray-400 placeholder:opacity-100"
         />
         <input
           id="history-policy-number"
@@ -82,7 +82,7 @@ export default function HistoryPanel() {
           value={policyNumber}
           onChange={(e) => setPolicyNumber(e.target.value)}
           placeholder="Ej: POL-2026-0001"
-          className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-blue-400"
+          className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-blue-400 placeholder:text-gray-400 placeholder:opacity-100"
         />
         {error && <p className="text-red-500 text-xs">{error}</p>}
         <button
