@@ -24,12 +24,24 @@ function formatCaseDate(dateStr: string): string {
   return new Date(y, m - 1, d).toLocaleDateString("es-PA");
 }
 
-export default function HistoryPanel() {
+export default function HistoryPanel({ isOpen = true }: { isOpen?: boolean }) {
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
   const [cedula, setCedula] = useState("");
   const [policyNumber, setPolicyNumber] = useState("");
   const [cases, setCases] = useState<CaseRecord[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Limpiar el estado de forma síncrona durante el renderizado (sin useEffect)
+  if (isOpen !== prevIsOpen) {
+    setPrevIsOpen(isOpen);
+    if (!isOpen) {
+      setCedula("");
+      setPolicyNumber("");
+      setCases(null);
+      setError("");
+    }
+  }
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();

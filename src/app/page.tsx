@@ -69,16 +69,20 @@ export default function HomePage() {
     }
   }
 
-  function reset() {
-    setStep("form");
+  function resetFormFields() {
     setCedula("");
     setPolicyFile(null);
     setReportFile(null);
     setErrors({});
-    setResult(null);
-    setShowHistory(false);
     if (policyRef.current) policyRef.current.value = "";
     if (reportRef.current) reportRef.current.value = "";
+  }
+
+  function reset() {
+    setStep("form");
+    setResult(null);
+    setShowHistory(false);
+    resetFormFields();
   }
 
   return (
@@ -217,7 +221,10 @@ export default function HomePage() {
             {/* ── Panel 2: Historial ── */}
             <button
               type="button"
-              onClick={() => setShowHistory(true)}
+              onClick={() => {
+                setShowHistory(true);
+                resetFormFields();
+              }}
               className={`w-full flex items-center justify-between px-6 py-4 text-left transition-colors cursor-pointer border-t border-gray-100 ${
                 showHistory
                   ? "bg-blue-600 text-white"
@@ -235,7 +242,7 @@ export default function HomePage() {
             >
               <div className="overflow-hidden">
                 <div className="p-6">
-                <HistoryPanel />
+                <HistoryPanel isOpen={showHistory} />
               </div>
             </div>
             </div>
