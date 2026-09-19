@@ -84,7 +84,15 @@ export default function HistoryPanel({ isOpen = true }: { isOpen?: boolean }) {
           value={cedula}
           onChange={(e) => setCedula(e.target.value)}
           placeholder="Ej: 8-888-8888"
-          className="w-full px-3 py-2 rounded-lg border border-gray-200 text-gray-900 text-sm focus:outline-none focus:border-blue-400 placeholder:text-gray-400 placeholder:opacity-100"
+          className={`w-full px-5 py-4 rounded-xl border-2 transition-all outline-none
+            text-gray-900 text-lg font-semibold tracking-widest
+            placeholder:text-gray-300 placeholder:font-normal placeholder:tracking-normal
+            focus:ring-4 focus:ring-blue-100
+            ${
+              cedula
+                ? "border-blue-500 bg-blue-50 shadow-inner"
+                : "border-gray-300 hover:border-blue-300 focus:border-blue-500"
+            }`}
         />
         <input
           id="history-policy-number"
@@ -94,7 +102,15 @@ export default function HistoryPanel({ isOpen = true }: { isOpen?: boolean }) {
           value={policyNumber}
           onChange={(e) => setPolicyNumber(e.target.value)}
           placeholder="Ej: POL-2026-0001"
-          className="w-full px-3 py-2 rounded-lg border border-gray-200 text-gray-900 text-sm focus:outline-none focus:border-blue-400 placeholder:text-gray-400 placeholder:opacity-100"
+          className={`w-full px-5 py-4 rounded-xl border-2 transition-all outline-none
+            text-gray-900 text-lg font-semibold tracking-widest
+            placeholder:text-gray-300 placeholder:font-normal placeholder:tracking-normal
+            focus:ring-4 focus:ring-blue-100
+            ${
+              policyNumber
+                ? "border-blue-500 bg-blue-50 shadow-inner"
+                : "border-gray-300 hover:border-blue-300 focus:border-blue-500"
+            }`}
         />
         {error && <p className="text-red-500 text-xs">{error}</p>}
         <button
