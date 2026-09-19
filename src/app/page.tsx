@@ -112,11 +112,12 @@ export default function HomePage() {
             </button>
 
             <div
-              className={`transition-all duration-300 ease-in-out overflow-hidden ${
-                !showHistory ? "max-h-[800px] opacity-100" : "max-h-0 opacity-0"
+              className={`grid transition-all duration-300 ease-in-out ${
+                !showHistory ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
               }`}
             >
-              <div className="p-8">
+              <div className="overflow-hidden">
+                <div className="p-8">
                 <form onSubmit={handleSubmit} className="space-y-6" noValidate>
                   {/* Cédula */}
                   <div>
@@ -211,6 +212,7 @@ export default function HomePage() {
                 </form>
               </div>
             </div>
+            </div>
 
             {/* ── Panel 2: Historial ── */}
             <button
@@ -227,13 +229,15 @@ export default function HomePage() {
             </button>
 
             <div
-              className={`transition-all duration-300 ease-in-out overflow-hidden ${
-                showHistory ? "max-h-[600px] opacity-100" : "max-h-0 opacity-0"
+              className={`grid transition-all duration-300 ease-in-out ${
+                showHistory ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
               }`}
             >
-              <div className="p-6">
+              <div className="overflow-hidden">
+                <div className="p-6">
                 <HistoryPanel />
               </div>
+            </div>
             </div>
 
           </div>
