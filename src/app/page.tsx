@@ -99,10 +99,12 @@ export default function HomePage() {
             <form onSubmit={handleSubmit} className="space-y-6" noValidate>
               {/* Cédula */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <label htmlFor="cedula" className="block text-sm font-semibold text-gray-700 mb-2">
                   🪪 Número de Cédula
                 </label>
                 <input
+                  id="cedula"
+                  name="cedula"
                   type="text"
                   value={cedula}
                   onChange={(e) => {
