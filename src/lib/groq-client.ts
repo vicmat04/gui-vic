@@ -17,11 +17,16 @@ function getGroq(): Groq {
   return _groq;
 }
 
-// Models updated 2026-09 — compound-beta-mini available on free Groq tier
-const VISION_PRIMARY = "compound-beta-mini";
-const VISION_FALLBACK = "compound-beta-mini";
-const TEXT_MODEL = "compound-beta-mini";
-const TEXT_FALLBACK = "compound-beta-mini";
+// Qwen VL per plan spec — best OCR for dense documents (policy/medical report scans).
+// Vision has no fallback model to switch to (only Qwen supports images on this account),
+// so it retries itself, still benefiting from the 429/5xx backoff below.
+const VISION_PRIMARY = "qwen/qwen3.8-27b";
+const VISION_FALLBACK = "qwen/qwen3.8-27b";
+// Plain text-to-text models, not "groq/compound(-mini)" — those are agentic Systems that
+// can autonomously call web search / code execution, which breaks the plan's anti-
+// hallucination rule (section 8: use ONLY literal info from the provided documents).
+const TEXT_MODEL = "openai/gpt-oss-120b";
+const TEXT_FALLBACK = "openai/gpt-oss-20b";
 
 const SYSTEM_PROMPT = `Eres un sistema de pre-autorización quirúrgica para una aseguradora.
 Recibirás dos documentos: la PÓLIZA del paciente y el INFORME MÉDICO del hospital (en texto o imagen).
@@ -120,12 +125,18 @@ function buildUserContent(
 async function executeGroqCall(model: string, contentParts: ContentPart[]): Promise<AIVerdict> {
   const response = await getGroq().chat.completions.create({
     model,
-    temperature: 0.1,
-    max_tokens: 2048,
+    temperature: 0.1, // low per plan section 8 — deterministic extraction, not creative
+    max_completion_tokens: 2048,
+    reasoning_effort: "medium", // needs to reason over coverage/exclusions/waiting periods, not just transcribe
     response_format: { type: "json_object" },
     messages: [
       { role: "system", content: SYSTEM_PROMPT },
-      { role: "user", content: contentParts as unknown as string /* SAFETY: Groq API allows parts */ },
+      {
+        role: "user",
+        // SAFETY: groq-sdk types content as string, but the OpenAI-compatible multimodal
+        // API accepts an array of {type, text|image_url} parts at runtime.
+        content: contentParts as unknown as string,
+      },
     ],
   });
 
@@ -140,6 +151,10 @@ async function executeGroqCall(model: string, contentParts: ContentPart[]): Prom
   }
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export async function analyzeDocuments(
   policyDoc: ParsedDocument,
   reportDoc: ParsedDocument
@@ -147,6 +162,7 @@ export async function analyzeDocuments(
   const contentParts = buildUserContent(policyDoc, reportDoc);
   const hasImages = !policyDoc.isText || !reportDoc.isText;
 
+  // Max 2 attempts total, per plan section 9.
   const modelsToTry = hasImages
     ? [VISION_PRIMARY, VISION_FALLBACK]
     : [TEXT_MODEL, TEXT_FALLBACK];
@@ -159,7 +175,19 @@ export async function analyzeDocuments(
       return await executeGroqCall(model, contentParts);
     } catch (err) {
       lastError = err;
-      console.warn(`[groq] Model ${model} failed, trying next:`, err);
+      console.warn(`[groq] Model ${model} failed:`, err);
+
+      // On 429/5xx, give the next attempt (fallback model) a moment before retrying.
+      // Other 4xx errors fall through to the next model too — it's our existing
+      // resilience net (e.g. a preview model rejecting a specific request shape).
+      if (err instanceof Groq.APIError && err.status) {
+        if (err.status === 429) {
+          const retryAfterSec = Number(err.headers?.get?.("retry-after"));
+          await sleep((Number.isFinite(retryAfterSec) ? retryAfterSec : 2) * 1000);
+        } else if (err.status >= 500) {
+          await sleep(500);
+        }
+      }
     }
   }
 
