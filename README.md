@@ -6,7 +6,7 @@ Sistema inteligente que automatiza la decisión de pre-autorización de cirugía
 
 ## Demo
 
-🔗 **[URL pública en Vercel — pendiente de deploy]**
+🌐 **[https://gui-vic.vercel.app/](https://gui-vic.vercel.app/)**
 
 ## Cómo funciona
 
@@ -120,4 +120,5 @@ Ver `AI-TOOLS.md` para el detalle completo exigido por las bases del hackathon.
 
 ## Equipo
 
+**GUI-VIC**
 hackIAthon 2025 — Viamatica / ADEN · Panamá
