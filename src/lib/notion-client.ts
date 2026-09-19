@@ -36,16 +36,90 @@ function getDatabaseId(): string {
   return cleanNotionId(process.env.NOTION_DATABASE_ID);
 }
 
+// ── Upload one original file to Notion (backup attachment) ────────
+// Best-effort: returns null on any failure so saveCase never blocks on this.
+async function uploadFileToNotion(file: File): Promise<string | null> {
+  try {
+    const createRes = await fetch("https://api.notion.com/v1/file_uploads", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.NOTION_API_KEY}`,
+        "Notion-Version": "2022-06-28",
+        "Content-Type": "application/json",
+      },
+      body: "{}",
+    });
+    const created = await createRes.json();
+    if (!createRes.ok || !created.upload_url) {
+      console.error("[notion] file_uploads create failed:", created);
+      return null;
+    }
+
+    // SAFETY: allowlist the upload_url host — it's server-controlled by Notion's own API
+    // response, but we still refuse to fetch() an unexpected host as defense in depth.
+    if (!String(created.upload_url).startsWith("https://api.notion.com/")) {
+      console.error("[notion] unexpected upload_url host, aborting:", created.upload_url);
+      return null;
+    }
+
+    const form = new FormData();
+    form.append("file", file, file.name);
+    const sendRes = await fetch(created.upload_url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.NOTION_API_KEY}`,
+        "Notion-Version": "2022-06-28",
+      },
+      body: form,
+    });
+    if (!sendRes.ok) {
+      console.error("[notion] file upload send failed:", await sendRes.text());
+      return null;
+    }
+    return created.id;
+  } catch (err) {
+    console.error("[notion] uploadFileToNotion error:", err);
+    return null;
+  }
+}
+
 // ── Save a new case ───────────────────────────────────────────────
-export async function saveCase(record: CaseRecord): Promise<string> {
+export async function saveCase(
+  record: CaseRecord,
+  originals?: { policyFile: File; reportFile: File }
+): Promise<string> {
   const dbId = getDatabaseId();
   if (!dbId) {
     throw new Error("NOTION_DATABASE_ID no está configurado.");
   }
+
+  const properties: Record<string, unknown> = buildProperties(record);
+
+  if (originals) {
+    const uploaded: { id: string; name: string }[] = [];
+    for (const file of [originals.policyFile, originals.reportFile]) {
+      const id = await uploadFileToNotion(file);
+      if (id) uploaded.push({ id, name: file.name });
+    }
+    if (uploaded.length > 0) {
+      properties["Documentos"] = {
+        files: uploaded.map((f) => ({
+          type: "file_upload",
+          file_upload: { id: f.id },
+          name: f.name,
+        })),
+      };
+    }
+  }
+
   try {
     const response = await getNotion().pages.create({
       parent: { database_id: dbId },
-      properties: buildProperties(record),
+      // SAFETY: `properties` is built by buildProperties() plus an optional "Documentos"
+      // files entry we add above — both match Notion's PageCreate property shape at runtime;
+      // the SDK's property union type is just too narrow to express a dynamic key like this.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      properties: properties as any,
     });
     return response.id;
   } catch (err) {
@@ -148,6 +222,14 @@ export async function queryCasesBySignals(
 }
 
 // ── Helpers ───────────────────────────────────────────────────────
+// The AI may return dates as free text (e.g. "10 de enero de 2026") instead of ISO 8601.
+// Notion's date property rejects anything else, so we validate before writing.
+function toISODateOrNull(value: string | null): string | null {
+  if (!value) return null;
+  const parsed = new Date(value);
+  return isNaN(parsed.getTime()) ? null : parsed.toISOString().slice(0, 10);
+}
+
 function buildProperties(record: CaseRecord) {
   const dateStr = record.createdAt ? record.createdAt.slice(0, 10) : new Date().toISOString().slice(0, 10);
   return {
@@ -198,6 +280,37 @@ function buildProperties(record: CaseRecord) {
     Fecha: { date: { start: dateStr } },
     Sospechoso: { checkbox: record.suspicious ?? false },
     Error: { checkbox: record.errorState ?? false },
+    Diagnóstico: {
+      rich_text: [{ text: { content: sanitize(record.medicalReport.diagnosis ?? "no encontrado") } }],
+    },
+    Paciente: {
+      rich_text: [{ text: { content: sanitize(record.medicalReport.patientName ?? "no encontrado") } }],
+    },
+    Asegurado: {
+      rich_text: [{ text: { content: sanitize(record.policy.insuredName ?? "no encontrado") } }],
+    },
+    ...(toISODateOrNull(record.policy.startDate)
+      ? { "Fecha Vigencia": { date: { start: toISODateOrNull(record.policy.startDate) } } }
+      : {}),
+    "Procedimientos Cubiertos": {
+      rich_text: [{ text: { content: sanitize((record.policy.coveredProcedures ?? []).join(", ")) } }],
+    },
+    Exclusiones: {
+      rich_text: [{ text: { content: sanitize((record.policy.exclusions ?? []).join(", ")) } }],
+    },
+    "Períodos de Carencia": {
+      rich_text: [
+        {
+          text: {
+            content: sanitize(
+              Object.entries(record.policy.waitingPeriods ?? {})
+                .map(([tipo, periodo]) => `${tipo}: ${periodo}`)
+                .join(", ")
+            ),
+          },
+        },
+      ],
+    },
   };
 }
 
@@ -216,9 +329,9 @@ function pageToRecord(page: any): CaseRecord {
     verdict: props["Veredicto"]?.select?.name ?? "documentos_faltantes",
     reason: props["Razón"]?.rich_text?.[0]?.plain_text ?? "",
     medicalReport: {
-      patientName: null,
+      patientName: props["Paciente"]?.rich_text?.[0]?.plain_text ?? null,
       procedure: props["Procedimiento"]?.rich_text?.[0]?.plain_text ?? null,
-      diagnosis: null,
+      diagnosis: props["Diagnóstico"]?.rich_text?.[0]?.plain_text ?? null,
       reportDate: null,
       physicianOrCenter:
         props["Médico/Centro"]?.rich_text?.[0]?.plain_text ?? null,
@@ -226,10 +339,14 @@ function pageToRecord(page: any): CaseRecord {
     },
     policy: {
       policyNumber: props["Número de Póliza"]?.rich_text?.[0]?.plain_text ?? null,
-      insuredName: null,
-      startDate: null,
-      coveredProcedures: [],
-      exclusions: [],
+      insuredName: props["Asegurado"]?.rich_text?.[0]?.plain_text ?? null,
+      startDate: props["Fecha Vigencia"]?.date?.start ?? null,
+      coveredProcedures:
+        props["Procedimientos Cubiertos"]?.rich_text?.[0]?.plain_text
+          ?.split(", ")
+          .filter(Boolean) ?? [],
+      exclusions:
+        props["Exclusiones"]?.rich_text?.[0]?.plain_text?.split(", ").filter(Boolean) ?? [],
       waitingPeriods: {},
     },
     createdAt: props["Fecha"]?.date?.start ?? new Date().toISOString(),
