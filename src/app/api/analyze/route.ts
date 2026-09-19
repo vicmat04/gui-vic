@@ -161,7 +161,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<SubmitRespons
 
   let caseId: string | undefined;
   try {
-    caseId = await saveCase(record);
+    caseId = await saveCase(record, { policyFile: policyFile!, reportFile: reportFile! });
   } catch (notionErr) {
     console.error("[analyze] Notion save failed:", notionErr);
     // Return the verdict anyway — Notion is storage, not the decision
@@ -209,10 +209,79 @@ function validateUploadedFile(file: File | null, label: string): string | null {
 
 const VALID_STATUSES = new Set(["preaprobado", "documentos_faltantes", "rechazado"]);
 
+const MEDICAL_REPORT_FIELDS = [
+  "patientName",
+  "procedure",
+  "diagnosis",
+  "reportDate",
+  "physicianOrCenter",
+  "folioNumber",
+];
+const POLICY_FIELDS = [
+  "policyNumber",
+  "insuredName",
+  "startDate",
+  "coveredProcedures",
+  "exclusions",
+  "waitingPeriods",
+];
+const EVIDENCE_FIELDS = ["coveragePassage", "waitingPeriodPassage"];
+
+function hasExactKeys(obj: unknown, expected: string[]): boolean {
+  if (typeof obj !== "object" || obj === null) return false;
+  const keys = Object.keys(obj);
+  return keys.length === expected.length && expected.every((k) => keys.includes(k));
+}
+
+function isStringOrNull(v: unknown): boolean {
+  return v === null || typeof v === "string";
+}
+
+function isStringArray(v: unknown): boolean {
+  return Array.isArray(v) && v.every((x) => typeof x === "string");
+}
+
+function isStringRecord(v: unknown): boolean {
+  if (typeof v !== "object" || v === null || Array.isArray(v)) return false;
+  return Object.values(v).every((x) => typeof x === "string");
+}
+
+// Rejects the AI response unless it has exactly the fields the plan defines,
+// with the correct type on each — plan section 11, point 1.
 function validateAIOutput(result: AIVerdict): string | null {
   if (!result || typeof result !== "object") return "Respuesta no es un objeto.";
   if (!VALID_STATUSES.has(result.status)) return "Estado inválido.";
   if (typeof result.reason !== "string") return "Razón inválida.";
-  if (!result.medicalReport || !result.policy) return "Campos faltantes.";
+
+  const { medicalReport, policy, evidence } = result;
+
+  if (!medicalReport || typeof medicalReport !== "object" || !hasExactKeys(medicalReport, MEDICAL_REPORT_FIELDS)) {
+    return "medicalReport no tiene exactamente los campos esperados.";
+  }
+  if (!Object.values(medicalReport).every(isStringOrNull)) {
+    return "medicalReport tiene un campo con tipo inválido.";
+  }
+
+  if (!policy || typeof policy !== "object" || !hasExactKeys(policy, POLICY_FIELDS)) {
+    return "policy no tiene exactamente los campos esperados.";
+  }
+  if (
+    !isStringOrNull(policy.policyNumber) ||
+    !isStringOrNull(policy.insuredName) ||
+    !isStringOrNull(policy.startDate) ||
+    !isStringArray(policy.coveredProcedures) ||
+    !isStringArray(policy.exclusions) ||
+    !isStringRecord(policy.waitingPeriods)
+  ) {
+    return "policy tiene un campo con tipo inválido.";
+  }
+
+  if (!evidence || typeof evidence !== "object" || !hasExactKeys(evidence, EVIDENCE_FIELDS)) {
+    return "evidence no tiene exactamente los campos esperados.";
+  }
+  if (!Object.values(evidence).every(isStringOrNull)) {
+    return "evidence tiene un campo con tipo inválido.";
+  }
+
   return null;
 }
