@@ -60,6 +60,9 @@ export default function HistoryPanel() {
       <h3 className="text-sm font-bold text-gray-600 uppercase tracking-wide mb-4">
         Historial de casos
       </h3>
+      <p className="text-xs text-gray-400 mb-3">
+        Ingresá la misma cédula del formulario y el número de póliza tal como aparece en tu documento de póliza.
+      </p>
       <form onSubmit={handleSearch} className="space-y-3 mb-4">
         <input
           id="history-cedula"
@@ -68,7 +71,7 @@ export default function HistoryPanel() {
           aria-label="Cédula"
           value={cedula}
           onChange={(e) => setCedula(e.target.value)}
-          placeholder="Cédula"
+          placeholder="Ej: 8-888-8888"
           className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-blue-400"
         />
         <input
@@ -78,7 +81,7 @@ export default function HistoryPanel() {
           aria-label="Número de póliza"
           value={policyNumber}
           onChange={(e) => setPolicyNumber(e.target.value)}
-          placeholder="Número de póliza"
+          placeholder="Ej: POL-2026-0001"
           className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-blue-400"
         />
         {error && <p className="text-red-500 text-xs">{error}</p>}
