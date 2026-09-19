@@ -100,7 +100,7 @@ export default function HistoryPanel({ isOpen = true }: { isOpen?: boolean }) {
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-2 bg-gray-700 text-white text-sm font-semibold rounded-lg hover:bg-gray-800 disabled:opacity-50 transition-colors"
+          className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold rounded-xl transition-all duration-150 shadow-md hover:shadow-lg cursor-pointer disabled:opacity-50 disabled:active:scale-100 disabled:cursor-not-allowed"
         >
           {loading ? "Consultando…" : "Buscar historial"}
         </button>
